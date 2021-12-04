@@ -1,4 +1,5 @@
 mod day1;
+mod common;
 
 fn main() {
     println!("day1-1 answer = {}", day1::day1_part1());
