@@ -27,7 +27,6 @@ fn depths() -> impl Iterator<Item = u32> {
     read_lines("../input/day1.txt")
         .filter_map(|l| l.ok())
         .map(|s| s.parse::<u32>().unwrap())
-        .into_iter()
 }
 
 fn read_lines<P>(filename: P) -> impl Iterator<Item = Result<String, std::io::Error>>
