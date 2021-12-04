@@ -2,8 +2,18 @@ use super::common;
 
 pub fn part1() -> i32 {
     let directions = common::read_lines("../input/day2.txt").map(|s| direction::from(s.as_str()));
-    let coord = direction::to_coord(directions);
-    coord.0 * coord.1
+    let (x, y) = direction::to_coord(directions);
+    x * y
+}
+
+pub fn part2() -> i32 {
+    let directions = common::read_lines("../input/day2.txt").map(|s| direction::from(s.as_str()));
+    let (x, d, _) = directions.fold((0, 0, 0), |(x, d, a), dir| match dir {
+        Direction::Forward(dx) => (x + dx, d + a*dx, a),
+        Direction::Down(da) => (x, d, a + da),
+        Direction::Up(da) => (x, d, a - da),
+        });
+    x * d
 }
 
 pub enum Direction { Forward(i32), Down(i32), Up(i32) }
