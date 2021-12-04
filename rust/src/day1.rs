@@ -23,18 +23,17 @@ fn count_increases(depths: &Vec<u32>) -> u32 {
         .windows(2)
         .filter_map(|w| match w {
             [a, b] => Some((a, b)),
-            _ => None
+            _ => None,
         })
         .fold(0, |n, (d0, d1)| n + u32::from(d1 > d0))
 }
 
 /** @todo Need to understand what a Box is. (Seems to describe a heap allocated element). */
-fn depths() -> Box<dyn Iterator<Item=u32>> {
-    Box::new(
-        read_lines("../input/day1.txt")
-            .filter_map(|l| l.ok())
-            .map(|s| s.parse::<u32>().unwrap()).into_iter()
-    )
+fn depths() -> impl Iterator<Item = u32> {
+    read_lines("../input/day1.txt")
+        .filter_map(|l| l.ok())
+        .map(|s| s.parse::<u32>().unwrap())
+        .into_iter()
 }
 
 fn read_lines<P>(filename: P) -> impl Iterator<Item = Result<String, std::io::Error>>
