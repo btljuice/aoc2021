@@ -1,6 +1,6 @@
 use super::common;
 
-pub fn day2() -> i32 {
+pub fn part1() -> i32 {
     let directions = common::read_lines("../input/day2.txt").map(|s| direction::from(s.as_str()));
     let coord = direction::to_coord(directions);
     coord.0 * coord.1

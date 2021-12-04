@@ -2,11 +2,11 @@
 use itertools::Itertools;
 use super::common;
 
-pub fn day1_part1() -> u32 {
+pub fn part1() -> u32 {
     count_increases(depths())
 }
 
-pub fn day1_part2() -> u32 {
+pub fn part2() -> u32 {
     let rolling_sums = depths()
         .tuple_windows::<(_, _, _)>()
         .map(|(a, b, c)| a + b + c);
