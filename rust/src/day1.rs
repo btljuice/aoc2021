@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, BufRead, Lines, BufReader};
+use std::io::{self, BufRead};
 use std::path::Path;
 
 pub fn day1_part1() -> u32 {
@@ -37,7 +37,10 @@ fn depths() -> Box<dyn Iterator<Item=u32>> {
     )
 }
 
-fn read_lines<P>(filename: P) -> Lines<BufReader<File>> where P: AsRef<Path> {
+fn read_lines<P>(filename: P) -> impl Iterator<Item = Result<String, std::io::Error>>
+where
+    P: AsRef<Path>,
+{
     let file = File::open(filename).unwrap();
     io::BufReader::new(file).lines()
 }
