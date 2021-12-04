@@ -20,7 +20,6 @@ enum Direction { Forward(i32), Down(i32), Up(i32) }
 
 /** @todo ANSME: Can an enum have a companion `impl Direction` ? */
 mod direction {
-    use itertools::Itertools;
     use super::Direction;
 
     /** @todo Return a Result<...> instead */
@@ -35,7 +34,7 @@ mod direction {
 
     /** @todo Return a Result<...> instead */
     pub(super) fn from(s: &str) -> Direction {
-        s.trim().split(' ').into_iter().collect_tuple::<(&str, &str)>()
+        s.trim().split_once(' ')
             .map(|(label, amplitude_str)| {
                 let amplitude: i32 = amplitude_str.parse().expect("Unable to parse amplitude");
                 ctor(label)(amplitude)
