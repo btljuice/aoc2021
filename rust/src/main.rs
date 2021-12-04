@@ -1,6 +1,7 @@
+mod common;
 mod day1;
 mod day2;
-mod common;
+mod day3;
 
 fn main() {
     println!("day1-1 answer = {}", day1::part1());
