@@ -16,7 +16,7 @@ pub fn part2() -> i32 {
     x * d
 }
 
-pub enum Direction { Forward(i32), Down(i32), Up(i32) }
+enum Direction { Forward(i32), Down(i32), Up(i32) }
 
 /** @todo ANSME: Can an enum have a companion `impl Direction` ? */
 mod direction {
@@ -34,7 +34,7 @@ mod direction {
     }
 
     /** @todo Return a Result<...> instead */
-    pub fn from(s: &str) -> Direction {
+    pub(super) fn from(s: &str) -> Direction {
         s.trim().split(' ').into_iter().collect_tuple::<(&str, &str)>()
             .map(|(label, amplitude_str)| {
                 let amplitude: i32 = amplitude_str.parse().expect("Unable to parse amplitude");
@@ -42,7 +42,7 @@ mod direction {
             }).expect("Unable to parse direction")
     }
 
-    pub fn to_coord(dirs: impl Iterator<Item=Direction>) -> (i32, i32) {
+    pub(super) fn to_coord(dirs: impl Iterator<Item=Direction>) -> (i32, i32) {
         dirs.fold((0, 0), |(x, y), dir| match dir {
             Direction::Forward(dx) => (x + dx, y),
             Direction::Down(dy) => (x, y + dy),
