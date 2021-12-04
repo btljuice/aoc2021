@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 
+// `.tuple_windows() can be used on iterators, while .windows() is only available on slices
 use itertools::Itertools;
 
 pub fn day1_part1() -> u32 {
@@ -9,16 +10,11 @@ pub fn day1_part1() -> u32 {
 }
 
 pub fn day1_part2() -> u32 {
-    let rolling_sums: Vec<u32> = depths()
-        .collect::<Vec<u32>>()
-        .windows(3)
-        .filter_map(|w| match w {
-            [a, b, c] => Some(a + b + c),
-            _ => None,
-        })
-        .collect();
+    let rolling_sums = depths()
+        .tuple_windows::<(_, _, _)>()
+        .map(|(a, b, c)| a + b + c);
 
-    count_increases(rolling_sums.into_iter())
+    count_increases(rolling_sums)
 }
 
 fn count_increases(depths: impl Iterator<Item = u32>) -> u32 {
@@ -27,7 +23,6 @@ fn count_increases(depths: impl Iterator<Item = u32>) -> u32 {
         .fold(0, |n, (d0, d1)| n + u32::from(d1 > d0))
 }
 
-/** @todo Need to understand what a Box is. (Seems to describe a heap allocated element). */
 fn depths() -> impl Iterator<Item = u32> {
     read_lines("../input/day1.txt")
         .filter_map(|l| l.ok())
