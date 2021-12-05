@@ -9,7 +9,7 @@ pub fn part1() -> u32 {
 }
 
 pub(self) fn power_consumption(bits: impl Iterator<Item=Vec<bool>>) -> u32 {
-    let most_common = most_common_bits(bits, 5);
+    let most_common = most_common_bits(bits, 12);
     let gamma = to_integer(&most_common);
     let epsilon = to_integer(invert_bits(&most_common).as_slice());
     println!("gamma = {}, epsilon = {}", gamma, epsilon);
