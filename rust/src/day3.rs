@@ -68,10 +68,12 @@ mod tests {
 00010
 01010
 ";
+    fn bitvecs() -> impl Iterator<Item=Vec<bool>> + Clone {
+        STATES.trim().split('\n').map(to_bitvec)
+    }
     #[test]
     fn test_power_consumption() {
-        let bitvecs = STATES.trim().split('\n').map(to_bitvec);
-        assert_eq!(power_consumption(bitvecs), 198)
+        assert_eq!(power_consumption(bitvecs()), 198)
     }
 
     #[test]
@@ -83,9 +85,7 @@ mod tests {
     fn test_most_common_bits() {
         // ANSME How to convert from a Iterator<Item=Vec<bool>> to a Iterator<Item=&Vec<bool>>
         // or Iterator<Item=&[bool]>, and make it as a parameter to most_common_bits
-        let bitvecs = STATES.trim().split('\n')
-            .map(to_bitvec);
-        let common_bits = most_common_bits(bitvecs, 5);
+        let common_bits = most_common_bits(bitvecs(), 5);
         assert_eq!(common_bits, vec![true, false, true,  true, false])
     }
 
