@@ -40,7 +40,7 @@ pub(self) fn most_common_bits(
             weights[i] += if b { 1 } else { -1 };
         }
     }
-    weights.iter().map(|w| *w >= 0).collect()
+    weights.iter().map(|w| *w >= 0).collect() // When there's equality, select 1
 }
 
 pub(self) fn invert_bits(bits: &[bool]) -> Vec<bool> { bits.iter().map(|x| !x).collect() }
