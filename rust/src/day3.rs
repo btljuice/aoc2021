@@ -1,4 +1,5 @@
 use std::fs::read;
+use itertools::Itertools;
 use super::common;
 
 pub fn part1() -> u32 {
@@ -8,12 +9,49 @@ pub fn part1() -> u32 {
     power_consumption(bitvecs)
 }
 
+pub fn part2() -> u32 {
+    let bitvecs: Vec<Vec<bool>> =
+        common::read_lines("../input/day3.txt")
+            .map(|l| to_bitvec(l.as_str())).collect();
+
+    let o2_rating = oxygen_rating(bitvecs.clone());
+    let co2_rating = co2_rating(bitvecs.clone());
+    o2_rating * co2_rating
+}
+
 pub(self) fn power_consumption(bits: impl Iterator<Item=Vec<bool>>) -> u32 {
     let most_common = most_common_bits(bits, 12);
     let gamma = to_integer(&most_common);
     let epsilon = to_integer(invert_bits(&most_common).as_slice());
     println!("gamma = {}, epsilon = {}", gamma, epsilon);
     gamma * epsilon
+}
+
+pub(self) fn str(bits: &[bool]) -> String {
+    bits.iter().map(|b| if *b { '1' } else { '0'}).collect::<String>()
+}
+
+pub(self) fn oxygen_rating(mut bitvecs: Vec<Vec<bool>>) -> u32 {
+    rating(bitvecs, |b0, b1| b0 == b1)
+}
+
+pub(self) fn co2_rating(mut bitvecs: Vec<Vec<bool>>) -> u32 {
+    rating(bitvecs, |b0, b1| b0 != b1)
+}
+
+pub(self) fn rating(mut bitvecs: Vec<Vec<bool>>, f: fn(bool, bool) -> bool) -> u32 {
+    let size = bitvecs.iter().map(|x| x.len()).max().unwrap_or(0);
+    for i in 0..size {
+        let most_common_bit = most_common_bits(bitvecs.iter().map(|b| vec![b[i]]), 1)[0];
+        bitvecs.retain(|bits| f(bits[i], most_common_bit));
+        println!("DEBUG for {}: bitvecs.len() = {}", i, bitvecs.len());
+        if bitvecs.len() == 1 { break; }
+    }
+    assert_eq!(bitvecs.len(), 1);
+
+    let rating = bitvecs[0].as_slice();
+    println!("oxygen_rating = {}", str(rating));
+    to_integer(rating)
 }
 
 pub(self) fn to_bitvec(s: &str) -> Vec<bool> {
@@ -50,7 +88,7 @@ pub(self) fn to_integer(bits: &[bool]) -> u32 {
 }
 
 #[cfg(test)]
-mod tests {
+pub(self) mod tests {
     use super::*;
 
     // ANSME: How can I go further and pre-compute these values into [bool] at compile time
@@ -100,5 +138,12 @@ mod tests {
     fn test_to_integer() {
         let n = to_integer(&vec![true, false , true, false]);
         assert_eq!(n, 10)
+    }
+
+    #[test]
+    fn test_oxygen_rating() {
+        let bv = bitvecs().collect_vec();
+        let o2 = oxygen_rating(bv);
+        assert_eq!(o2, 23)
     }
 }
