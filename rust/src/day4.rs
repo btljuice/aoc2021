@@ -23,12 +23,12 @@ pub(self) mod bingo {
     #[derive(Debug, PartialEq)]
     pub struct CardRow { pub row: [Number; CARD_SIZE] }
     impl TryFrom< Vec<Number> > for CardRow {
-        type Error = super::bingo::BingoError;
+        type Error = super::bingo::ParseError;
         fn try_from(value: Vec<Number>) -> Result<Self, Self::Error> {
             let sz = value.len();
             value
                 .try_into()
-                .map_err(|_| BingoError::CardInvalidRowSize(sz))
+                .map_err(|_| ParseError::CardInvalidRowSize(sz))
                 .map(|row| CardRow { row })
         }
     }
@@ -40,18 +40,18 @@ pub(self) mod bingo {
     #[derive(Debug, PartialEq)]
     pub struct Card { pub rows: [CardRow; CARD_SIZE] }
     impl TryFrom< Vec<CardRow> > for Card {
-        type Error = BingoError;
+        type Error = ParseError;
 
         fn try_from(value: Vec<CardRow>) -> Result<Self, Self::Error> {
             let sz = value.len(); // Note: Length needs to be captured right away.
             value.try_into()
-                .map_err(|_| BingoError::CardInvalidNbRows(sz))
+                .map_err(|_| ParseError::CardInvalidNbRows(sz))
                 .map(|rows| Card { rows })
         }
     }
 
     #[derive(Debug, Copy, Clone)]
-    pub enum BingoError {
+    pub enum ParseError {
         DrawLineMissing,
         DrawLineInvalidFormat,
         CardLineInvalidFormat,
@@ -59,22 +59,22 @@ pub(self) mod bingo {
         CardInvalidNbRows(usize),
     }
 
-    pub fn parse_draw(line: Option<&str>) -> Result<Draw, BingoError> {
-        line.ok_or(BingoError::DrawLineMissing)?
+    pub fn parse_draw(line: Option<&str>) -> Result<Draw, ParseError> {
+        line.ok_or(ParseError::DrawLineMissing)?
             .trim()
             .split(',')
             .map(|n| n.trim().parse::<Number>())
             .try_collect()
-            .map_err(|_| BingoError::DrawLineInvalidFormat)
+            .map_err(|_| ParseError::DrawLineInvalidFormat)
     }
 
-    pub fn parse_card(lines: &[&str; CARD_SIZE]) -> Result<Card, BingoError> {
+    pub fn parse_card(lines: &[&str; CARD_SIZE]) -> Result<Card, ParseError> {
         lines.iter().map(|l| {
-            let cl: Result<CardRow, BingoError> = l // `.try_into()` below requires type hint, but it does not have type parameters
+            let cl: Result<CardRow, ParseError> = l // `.try_into()` below requires type hint, but it does not have type parameters
                 .split_whitespace()
                 .map(|n| n.parse::<Number>())
                 .try_collect::<_, Vec<Number>, _>()
-                .map_err(|_| BingoError::CardLineInvalidFormat)?
+                .map_err(|_| ParseError::CardLineInvalidFormat)?
                 .try_into();
             cl
         }).try_collect::<_, Vec<_>, _>()?
@@ -108,8 +108,7 @@ pub(self) mod tests {
         assert_eq!(actual, expected)
     }
 
-
-    fn sample() -> Result<(Draw, Vec<Card>), BingoError> {
+    fn sample() -> Result<(Draw, Vec<Card>), ParseError> {
         let mut lines = common::read_lines("../input/day4_sample.txt");
         let draw: Draw = parse_draw(lines.next().as_ref().map(|s| s.as_str()))?;
 
