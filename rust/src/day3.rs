@@ -15,7 +15,7 @@ pub fn part2() -> u32 {
             .map(|l| to_bitvec(l.as_str())).collect();
 
     let o2_rating = oxygen_rating(bitvecs.clone());
-    let co2_rating = co2_rating(bitvecs.clone());
+    let co2_rating = co2_rating(bitvecs);
     o2_rating * co2_rating
 }
 
