@@ -1,4 +1,3 @@
-use std::fs::read;
 use itertools::Itertools;
 use super::common;
 
@@ -31,11 +30,11 @@ pub(self) fn str(bits: &[bool]) -> String {
     bits.iter().map(|b| if *b { '1' } else { '0'}).collect::<String>()
 }
 
-pub(self) fn oxygen_rating(mut bitvecs: Vec<Vec<bool>>) -> u32 {
+pub(self) fn oxygen_rating(bitvecs: Vec<Vec<bool>>) -> u32 {
     rating(bitvecs, |b0, b1| b0 == b1)
 }
 
-pub(self) fn co2_rating(mut bitvecs: Vec<Vec<bool>>) -> u32 {
+pub(self) fn co2_rating(bitvecs: Vec<Vec<bool>>) -> u32 {
     rating(bitvecs, |b0, b1| b0 != b1)
 }
 
