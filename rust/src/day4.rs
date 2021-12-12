@@ -1,7 +1,9 @@
 use super::common;
 
 pub fn part1() -> u32 {
-    todo!()
+    let (draw, cards) = bingo::parse("../input/day4.txt").unwrap();
+    let (winner_no, punch_card) = bingo::execute_draw(&draw, &cards).unwrap();
+    u32::from(winner_no) * punch_card.unmarked_sum()
 }
 
 pub fn part2() -> u32 {
@@ -82,11 +84,11 @@ pub(self) mod bingo {
             let marks = self.punches.iter().flat_map(|p| p.iter());
             let numbers = self.numbers.rows.iter().flat_map(|r| r.row.iter());
 
-            marks.zip(numbers).fold(0, |sum, (&m, &n)| sum + u32::from(m) * u32::from(n))
+            marks.zip(numbers).fold(0, |sum, (&m, &n)| sum + u32::from(!m) * u32::from(n))
         }
     }
 
-    pub fn execute_draw<'a, 'b>(draw: &'b Draw, cards: &'a[Card]) -> Option<(usize, PunchCard<'a>)> {
+    pub fn execute_draw<'a, 'b>(draw: &'b Draw, cards: &'a[Card]) -> Option<(Number, PunchCard<'a>)> {
         let mut punch_cards: Vec<PunchCard> = cards.iter().map(|c| PunchCard::new(&c)).collect();
 
         for &n in draw {
@@ -94,13 +96,12 @@ pub(self) mod bingo {
 
             let winners = punch_cards
                 .iter()
-                .enumerate()
-                .filter(|(_, p)| p.is_winner())
+                .filter(|p| p.is_winner())
                 .collect_vec();
-            let nb_winners = winners.len();
-            if nb_winners == 1 {
-                let (i, &punch_card) = winners[0];
-                return Some( (i, punch_card) );
+            // Picks first winner, does not check if there's more than one winner
+            if winners.len() > 1 { println!("WARN, there's more than one winner"); }
+            if let Some( &&punch_card ) = winners.first() {
+                return Some( (n, punch_card) );
             }
         }
         None
@@ -162,6 +163,7 @@ pub(self) mod bingo {
 
 #[cfg(test)]
 pub(self) mod tests {
+    use itertools::Itertools;
     use super::bingo::*;
 
     const CARD1_STR: &'static [&'static str; CARD_SIZE] = &[
@@ -231,5 +233,17 @@ pub(self) mod tests {
             punch_card.punch(n);
         }
         assert!(punch_card.is_winner());
+    }
+
+    #[test]
+    fn test_execute_draw() {
+        let (draw, cards) = parse("../input/day4_sample.txt").unwrap();
+        match execute_draw(&draw, &cards) {
+            Some( (winner_no, punch_card) ) => {
+                assert_eq!(winner_no, 24);
+                assert_eq!(punch_card.unmarked_sum(), 188);
+            },
+            None => assert!(false)
+        }
     }
 }
