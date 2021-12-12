@@ -2,12 +2,14 @@ use super::common;
 
 pub fn part1() -> u32 {
     let (draw, cards) = bingo::parse("../input/day4.txt").unwrap();
-    let (winner_no, punch_card) = bingo::execute_draw(&draw, &cards).unwrap();
+    let (winner_no, punch_card) = bingo::first_winner(&draw, &cards).unwrap();
     u32::from(winner_no) * punch_card.unmarked_sum()
 }
 
 pub fn part2() -> u32 {
-    todo!()
+    let (draw, cards) = bingo::parse("../input/day4.txt").unwrap();
+    let (winner_no, punch_card) = bingo::last_winner(&draw, &cards).unwrap();
+    u32::from(winner_no) * punch_card.unmarked_sum()
 }
 
 pub(self) mod bingo {
@@ -88,7 +90,7 @@ pub(self) mod bingo {
         }
     }
 
-    pub fn execute_draw<'a, 'b>(draw: &'b Draw, cards: &'a[Card]) -> Option<(Number, PunchCard<'a>)> {
+    pub fn first_winner<'a, 'b>(draw: &'b Draw, cards: &'a[Card]) -> Option<(Number, PunchCard<'a>)> {
         let mut punch_cards: Vec<PunchCard> = cards.iter().map(|c| PunchCard::new(c)).collect();
 
         for &n in draw {
@@ -107,6 +109,21 @@ pub(self) mod bingo {
         None
     }
 
+    pub fn last_winner<'a, 'b>(draw: &'b Draw, cards: &'a[Card]) -> Option<(Number, PunchCard<'a>)> {
+        let mut punch_cards: Vec<PunchCard> = cards.iter().map(|c| PunchCard::new(c)).collect();
+
+        for &n in draw {
+            for punch_card in &mut punch_cards { punch_card.punch(n); }
+
+            let all_winners = punch_cards.iter().all(|p| p.is_winner());
+            if let (true, Some(&punch_card)) = (all_winners, punch_cards.first()) {
+                return Some((n, punch_card))
+            }
+
+            punch_cards.retain(|p| !p.is_winner());
+        }
+        None
+    }
     #[derive(Debug, Copy, Clone)]
     pub enum ParseError {
         DrawLineMissing,
@@ -235,12 +252,24 @@ pub(self) mod tests {
     }
 
     #[test]
-    fn test_execute_draw() {
+    fn test_first_winner() {
         let (draw, cards) = parse("../input/day4_sample.txt").unwrap();
-        match execute_draw(&draw, &cards) {
+        match first_winner(&draw, &cards) {
             Some( (winner_no, punch_card) ) => {
                 assert_eq!(winner_no, 24);
                 assert_eq!(punch_card.unmarked_sum(), 188);
+            },
+            None => assert!(false)
+        }
+    }
+
+    #[test]
+    fn test_last_winner() {
+        let (draw, cards) = parse("../input/day4_sample.txt").unwrap();
+        match last_winner(&draw, &cards) {
+            Some( (winner_no, punch_card) ) => {
+                assert_eq!(winner_no, 13);
+                assert_eq!(punch_card.unmarked_sum(), 148);
             },
             None => assert!(false)
         }

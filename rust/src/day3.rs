@@ -140,7 +140,7 @@ pub(self) mod tests {
 
     #[test]
     fn test_oxygen_rating() {
-        let bv = bitvecs().collect_vec();
+        let bv = bitvecs().collect();
         let o2 = oxygen_rating(bv);
         assert_eq!(o2, 23)
     }
