@@ -71,7 +71,7 @@ pub(self) mod bingo {
             for i in 0..CARD_SIZE {
                 if ! self.punches[i][j] { return false; }
             }
-            return true;
+            true
         }
         fn is_row_winner(&self, i: usize) -> bool {
             self.punches[i].iter().all(|&p| p)
@@ -89,7 +89,7 @@ pub(self) mod bingo {
     }
 
     pub fn execute_draw<'a, 'b>(draw: &'b Draw, cards: &'a[Card]) -> Option<(Number, PunchCard<'a>)> {
-        let mut punch_cards: Vec<PunchCard> = cards.iter().map(|c| PunchCard::new(&c)).collect();
+        let mut punch_cards: Vec<PunchCard> = cards.iter().map(|c| PunchCard::new(c)).collect();
 
         for &n in draw {
             for punch_card in &mut punch_cards { punch_card.punch(n); }
@@ -150,7 +150,7 @@ pub(self) mod bingo {
         }
 
         let mut lines = common::read_lines(filename);
-        let draw: Draw = parse_draw(lines.next().as_ref().map(|s| s.as_str()))?;
+        let draw: Draw = parse_draw(lines.next().as_deref())?;
         let cards: Vec<Card> = lines
             .chunks(6)
             .into_iter()
@@ -163,7 +163,6 @@ pub(self) mod bingo {
 
 #[cfg(test)]
 pub(self) mod tests {
-    use itertools::Itertools;
     use super::bingo::*;
 
     const CARD1_STR: &'static [&'static str; CARD_SIZE] = &[

@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use super::common;
 
 pub fn part1() -> u32 {
