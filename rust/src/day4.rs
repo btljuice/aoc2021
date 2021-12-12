@@ -50,6 +50,62 @@ pub(self) mod bingo {
         }
     }
 
+    #[derive(Clone, Copy)]
+    pub struct PunchCard<'a> {
+        numbers: &'a Card,
+        punches: [[bool; CARD_SIZE]; CARD_SIZE]
+    }
+    impl<'a> PunchCard<'a> {
+        pub fn new(numbers: &'a Card) -> Self { PunchCard::<'a> { numbers, punches: [ [false; 5]; 5] } }
+        pub fn punch(&mut self, n: Number) -> &mut Self {
+            for i in 0..CARD_SIZE {
+                for j in 0..CARD_SIZE {
+                    if self.numbers.rows[i].row[j] == n { self.punches[i][j] = true; }
+                }
+            }
+            self
+        }
+        fn is_column_winner(&self, j: usize) -> bool {
+            for i in 0..CARD_SIZE {
+                if ! self.punches[i][j] { return false; }
+            }
+            return true;
+        }
+        fn is_row_winner(&self, i: usize) -> bool {
+            self.punches[i].iter().all(|&p| p)
+        }
+        pub fn is_winner(&self) -> bool {
+               (0..CARD_SIZE).any(|n| self.is_row_winner(n))
+            || (0..CARD_SIZE).any(|n| self.is_column_winner(n))
+        }
+        pub fn unmarked_sum(&self) -> u32 {
+            let marks = self.punches.iter().flat_map(|p| p.iter());
+            let numbers = self.numbers.rows.iter().flat_map(|r| r.row.iter());
+
+            marks.zip(numbers).fold(0, |sum, (&m, &n)| sum + u32::from(m) * u32::from(n))
+        }
+    }
+
+    pub fn execute_draw<'a, 'b>(draw: &'b Draw, cards: &'a[Card]) -> Option<(usize, PunchCard<'a>)> {
+        let mut punch_cards: Vec<PunchCard> = cards.iter().map(|c| PunchCard::new(&c)).collect();
+
+        for &n in draw {
+            for punch_card in &mut punch_cards { punch_card.punch(n); }
+
+            let winners = punch_cards
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| p.is_winner())
+                .collect_vec();
+            let nb_winners = winners.len();
+            if nb_winners == 1 {
+                let (i, &punch_card) = winners[0];
+                return Some( (i, punch_card) );
+            }
+        }
+        None
+    }
+
     #[derive(Debug, Copy, Clone)]
     pub enum ParseError {
         DrawLineMissing,
@@ -140,8 +196,6 @@ pub(self) mod tests {
         CardRow { row: [  2,  0, 12,  3,  7 ] }
     ] };
 
-    fn sample() -> Result<(Draw, Vec<Card>), ParseError> { parse("../input/day4_sample.txt") }
-
     #[test]
     fn test_parse_card() {
         let actual = parse_card(CARD1_STR).unwrap();
@@ -149,12 +203,33 @@ pub(self) mod tests {
     }
 
     #[test]
-    fn test1() {
-        let (draw, cards) = sample().unwrap();
+    fn test_parse() {
+        let (draw, cards) = parse("../input/day4_sample.txt").unwrap();
         assert_eq!(
             draw,
             vec![7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1]
         );
         assert_eq!(cards, vec![CARD1, CARD2, CARD3]);
+    }
+
+    #[test]
+    fn test_is_winner_vertical() {
+        let mut punch_card = PunchCard::new(&CARD1);
+
+        for n in [0, 24, 5, 7, 19] {
+            assert!(!punch_card.is_winner());
+            punch_card.punch(n);
+        }
+        assert!(punch_card.is_winner());
+    }
+
+    #[test]
+    fn test_is_winner_horizontal() {
+        let mut punch_card = PunchCard::new(&CARD1);
+        for n in [21,  9, 14, 16,  7] {
+            assert!(!punch_card.is_winner());
+            punch_card.punch(n);
+        }
+        assert!(punch_card.is_winner());
     }
 }
