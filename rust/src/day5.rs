@@ -15,22 +15,22 @@ impl Line {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PointParseError {
     MissingComma,
     InvalidNumber(&'static str),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum LineParseError {
     MissingArrow,
     InvalidPoint(PointParseError, &'static str),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct WithLineNumber<T: Debug> { line_no: usize, value: T }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct LineParseErrors { errors: Vec<WithLineNumber<LineParseError>> }
 
 fn parse_lines<'a>(lines: impl Iterator<Item=&'a str>) -> Result<Vec<Line>, LineParseErrors> {
@@ -68,7 +68,7 @@ impl FromStr for Line {
 pub(self) mod tests {
     use super::*;
 
-    const LINE_SEGMENTS_STR: &'static str = "
+    const LINES_STR: &str = "
 0,9 -> 5,9
 8,0 -> 0,8
 9,4 -> 3,4
@@ -80,11 +80,40 @@ pub(self) mod tests {
 0,0 -> 8,8
 5,5 -> 8,2
 ";
+    const LINES: [Line; 10] = [
+        Line { p0: Point { x: 0, y: 9 }, p1: Point { x: 5, y: 9 } },
+        Line { p0: Point { x: 8, y: 0 }, p1: Point { x: 0, y: 8 } },
+        Line { p0: Point { x: 9, y: 4 }, p1: Point { x: 3, y: 4 } },
+        Line { p0: Point { x: 2, y: 2 }, p1: Point { x: 2, y: 1 } },
+        Line { p0: Point { x: 7, y: 0 }, p1: Point { x: 7, y: 4 } },
+        Line { p0: Point { x: 6, y: 4 }, p1: Point { x: 2, y: 0 } },
+        Line { p0: Point { x: 0, y: 9 }, p1: Point { x: 2, y: 9 } },
+        Line { p0: Point { x: 3, y: 4 }, p1: Point { x: 1, y: 4 } },
+        Line { p0: Point { x: 0, y: 0 }, p1: Point { x: 8, y: 8 } },
+        Line { p0: Point { x: 5, y: 5 }, p1: Point { x: 8, y: 2 } },
+    ];
 
     #[test]
     fn test_parse_line_segments() {
-        let lines = parse_lines(LINE_SEGMENTS_STR.trim().split('\n')).unwrap();
-        assert_eq!(lines[0], Line::from((0, 9), (5, 9)));
-        assert_eq!(lines[9], Line::from((5, 5), (8, 2)));
+        let lines = parse_lines(LINES_STR.trim().split('\n')).unwrap();
+        assert_eq!(lines.as_slice(), LINES);
+    }
+
+    #[test]
+    fn test_parse_errors() {
+        const ERROR_STR: [&str; 4] = [
+            "1 -> 2,3",   // Missing comma
+            "1,2 -> 3,4",  // Good line !
+            "1,2 -> 3,a", // Invalid Number
+            "1,2 3,4",    // Missing Arrow
+        ];
+        let expected: LineParseErrors = LineParseErrors { errors: vec![
+            WithLineNumber { line_no: 1, value: LineParseError::InvalidPoint(PointParseError::MissingComma, "p0") },
+            WithLineNumber { line_no: 3, value: LineParseError::InvalidPoint(PointParseError::InvalidNumber("y"), "p1") },
+            WithLineNumber { line_no: 4, value: LineParseError::MissingArrow },
+        ] };
+
+        let errors = parse_lines(ERROR_STR.iter().map(|s|*s)).unwrap_err();
+        assert_eq!(errors, expected);
     }
 }
