@@ -2,14 +2,14 @@ use std::fmt::{Debug, Display, Formatter};
 use std::str::FromStr;
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::convert::{TryFrom, TryInto};
-use std::ops::{Add, AddAssign, Sub};
+use std::convert::TryInto;
+use std::ops::AddAssign;
 use crate::common;
 
 type Number = i32;
 
 pub fn part1() -> usize {
-    let lines = parse_lines(common::read_lines("../input/day5.txt").into_iter()).unwrap();
+    let lines = parse_lines(common::read_lines("../input/day5.txt")).unwrap();
 
     let drawn = draw_lines(
         lines.iter().filter(|l| l.is_vertical() || !l.is_horizontal())
@@ -18,7 +18,7 @@ pub fn part1() -> usize {
 }
 
 pub fn part2() -> usize {
-    let lines = parse_lines(common::read_lines("../input/day5.txt").into_iter()).unwrap();
+    let lines = parse_lines(common::read_lines("../input/day5.txt")).unwrap();
 
     let drawn = draw_lines(lines.iter());
     drawn.iter().filter(|(_, &v)| v > 1).count()
@@ -45,22 +45,6 @@ impl Display for Point {
     }
 }
 
-impl Point {
-    fn bounding_box(&self, rhs: &Point) -> (Point, Point) {
-        let (x0, x1) = self.minmax_x(rhs);
-        let (y0, y1) = self.minmax_y(rhs);
-
-        ( Point { x: x0, y: y0 }, Point { x: x1, y: y1 } )
-    }
-
-    fn minmax_x(&self, rhs: &Point) -> (Number, Number) {
-        if self.x < rhs.x { (self.x, rhs.x) } else { (rhs.x, self.x) }
-    }
-    fn minmax_y(&self, rhs: &Point) -> (Number, Number) {
-        if self.y < rhs.y { (self.y, rhs.y) } else { (rhs.y, self.y) }
-    }
-}
-
 impl AddAssign for Point {
     fn add_assign(&mut self, rhs: Self) {
         *self = Self { x: self.x + rhs.x, y: self.y + rhs.y }
@@ -75,7 +59,6 @@ impl Iterator for LineIterator {
             let p = self.p;
             self.nb_ite -= 1;
             self.p += self.dt;
-            println!("Next = {}", p);
             Some(p)
         } else {
             None
@@ -86,30 +69,8 @@ impl Iterator for LineIterator {
 #[derive(Copy, Clone, Debug, PartialEq) ]
 struct Line { p0: Point, p1: Point }
 impl Line {
-    fn from_tuples(p0: (Number, Number), p1: (Number, Number)) -> Line {
-        Line { p0: Point { x: p0.0, y : p0.1 }, p1: Point { x: p1.0, y: p1.1 } }
-    }
-
-    fn bounding_box(&self) -> Line {
-        let (min_pt, max_pt) = self.p0.bounding_box(&self.p1);
-        Line { p0: min_pt, p1: max_pt }
-    }
-
-    fn to_tuples(&self) -> ((Number, Number), (Number, Number)) {
-        ((self.p0.x, self.p0.y), (self.p1.x, self.p1.y))
-    }
-
     fn is_vertical(&self) -> bool   { self.p0.x == self.p1.x }
     fn is_horizontal(&self) -> bool { self.p0.y == self.p1.y }
-
-    fn min_x(&self) -> Number { Number::min(self.p0.x, self.p1.x) }
-    fn max_x(&self) -> Number { Number::max(self.p0.x, self.p1.x) }
-
-    fn normalize(&self) -> Self {
-        if self.p0.x < self.p1.x { self.clone() }
-        else { self.swap() }
-    }
-    fn swap(&self) -> Self { Line { p0: self.p1, p1: self.p0 } }
 }
 
 
