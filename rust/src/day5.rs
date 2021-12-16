@@ -1,18 +1,63 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 use std::str::FromStr;
 use itertools::Itertools;
+use std::collections::HashMap;
 
 type Number = u32;
 
-#[derive(Copy, Clone, Debug, PartialEq) ]
+fn draw_lines<'a>(lines: impl Iterator<Item=&'a Line>) -> HashMap<Point, u32> {
+    let mut freq_count = HashMap::<Point, u32>::new();
+
+    for l in lines {
+        if !l.is_horizontal() && !l.is_vertical() { continue; }
+
+        let ((min_x, min_y), (max_x,max_y)) = l.bounding_box().to_tuples();
+        for x in min_x..=max_x {
+            for y in min_y..=max_y {
+                println!("Adding {}, {}", x, y);
+                freq_count.entry(Point{x, y}).and_modify(|n| *n += 1).or_insert(1);
+            }
+        }
+    }
+
+    freq_count
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash) ]
 struct Point { x: Number, y: Number }
+
+impl Display for Point {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
+impl Point {
+    fn bounding_box(&self, rhs: &Point) -> (Point, Point) {
+        let min_pt = Point { x: Number::min(self.x, rhs.x), y: Number::min(self.y, rhs.y) };
+        let max_pt = Point { x: Number::max(self.x, rhs.x), y: Number::max(self.y, rhs.y) };
+        (min_pt, max_pt)
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq) ]
 struct Line { p0: Point, p1: Point }
 impl Line {
-    fn from(p0: (Number, Number), p1: (Number, Number)) -> Line {
+    fn from_tuples(p0: (Number, Number), p1: (Number, Number)) -> Line {
         Line { p0: Point { x: p0.0, y : p0.1 }, p1: Point { x: p1.0, y: p1.1 } }
     }
+
+    fn bounding_box(&self) -> Line {
+        let (min_pt, max_pt) = self.p0.bounding_box(&self.p1);
+        Line { p0: min_pt, p1: max_pt }
+    }
+
+    fn to_tuples(&self) -> ((Number, Number), (Number, Number)) {
+        ((self.p0.x, self.p0.y), (self.p1.x, self.p1.y))
+    }
+
+    fn is_vertical(&self) -> bool   { self.p0.x == self.p1.x }
+    fn is_horizontal(&self) -> bool { self.p0.y == self.p1.y }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -40,7 +85,6 @@ fn parse_lines<'a>(lines: impl Iterator<Item=&'a str>) -> Result<Vec<Line>, Line
     if !errors.is_empty() { Err(LineParseErrors{ errors }) }
     else { Ok(lines) }
 }
-
 
 //// Converters
 
@@ -80,17 +124,22 @@ pub(self) mod tests {
 0,0 -> 8,8
 5,5 -> 8,2
 ";
+
+    macro_rules! line { ($x0:literal, $y0:literal, $x1:literal, $y1:literal) => {
+            Line { p0: Point { x: $x0, y: $y0 }, p1: Point { x: $x1, y: $y1 } }
+        } }
+
     const LINES: [Line; 10] = [
-        Line { p0: Point { x: 0, y: 9 }, p1: Point { x: 5, y: 9 } },
-        Line { p0: Point { x: 8, y: 0 }, p1: Point { x: 0, y: 8 } },
-        Line { p0: Point { x: 9, y: 4 }, p1: Point { x: 3, y: 4 } },
-        Line { p0: Point { x: 2, y: 2 }, p1: Point { x: 2, y: 1 } },
-        Line { p0: Point { x: 7, y: 0 }, p1: Point { x: 7, y: 4 } },
-        Line { p0: Point { x: 6, y: 4 }, p1: Point { x: 2, y: 0 } },
-        Line { p0: Point { x: 0, y: 9 }, p1: Point { x: 2, y: 9 } },
-        Line { p0: Point { x: 3, y: 4 }, p1: Point { x: 1, y: 4 } },
-        Line { p0: Point { x: 0, y: 0 }, p1: Point { x: 8, y: 8 } },
-        Line { p0: Point { x: 5, y: 5 }, p1: Point { x: 8, y: 2 } },
+        line!(0, 9, 5, 9),
+        line!(8, 0, 0, 8),
+        line!(9, 4, 3, 4),
+        line!(2, 2, 2, 1),
+        line!(7, 0, 7, 4),
+        line!(6, 4, 2, 0),
+        line!(0, 9, 2, 9),
+        line!(3, 4, 1, 4),
+        line!(0, 0, 8, 8),
+        line!(5, 5, 8, 2),
     ];
 
     #[test]
@@ -115,5 +164,20 @@ pub(self) mod tests {
 
         let errors = parse_lines(ERROR_STR.iter().map(|s|*s)).unwrap_err();
         assert_eq!(errors, expected);
+    }
+
+    #[test]
+    fn test_intersect_ver_hor_lines() {
+        macro_rules! p { ($x:literal, $y:literal) => { Point { x:$x, y:$y } } }
+        const EXPECTED: [(Point, u32); 21] = [
+            (p!(2, 1), 1), (p!(2, 2), 1),
+            (p!(7, 0), 1), (p!(7, 1), 1), (p!(7, 2), 1), (p!(7, 3), 1),
+            (p!(1, 4), 1), (p!(2, 4), 1), (p!(3, 4), 2), (p!(4, 4), 1), (p!(5, 4), 1), (p!(6, 4), 1), (p!(7, 4), 2), (p!(8, 4), 1), (p!(9, 4), 1),
+            (p!(0, 9), 2), (p!(1, 9), 2), (p!(2, 9), 2), (p!(3, 9), 1), (p!(4, 9), 1), (p!(5, 9), 1),
+        ];
+        let draw_board = draw_lines(LINES.iter());
+        for (k, v) in &EXPECTED {
+            assert_eq!(draw_board.get(k), Some(v), "Entry {} mismatch", k)
+        }
     }
 }
