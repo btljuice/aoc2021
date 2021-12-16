@@ -2,12 +2,24 @@ use std::fmt::{Debug, Display, Formatter};
 use std::str::FromStr;
 use itertools::Itertools;
 use std::collections::HashMap;
+use std::convert::{TryFrom, TryInto};
+use std::ops::{Add, AddAssign, Sub};
 use crate::common;
 
-type Number = u32;
+type Number = i32;
 
 pub fn part1() -> usize {
     let lines = parse_lines(common::read_lines("../input/day5.txt").into_iter()).unwrap();
+
+    let drawn = draw_lines(
+        lines.iter().filter(|l| l.is_vertical() || !l.is_horizontal())
+    );
+    drawn.iter().filter(|(_, &v)| v > 1).count()
+}
+
+pub fn part2() -> usize {
+    let lines = parse_lines(common::read_lines("../input/day5.txt").into_iter()).unwrap();
+
     let drawn = draw_lines(lines.iter());
     drawn.iter().filter(|(_, &v)| v > 1).count()
 }
@@ -16,20 +28,15 @@ fn draw_lines<'a>(lines: impl Iterator<Item=&'a Line>) -> HashMap<Point, u32> {
     let mut freq_count = HashMap::<Point, u32>::new();
 
     for l in lines {
-        if !l.is_horizontal() && !l.is_vertical() { continue; }
-
-        let ((min_x, min_y), (max_x, max_y)) = l.bounding_box().to_tuples();
-        for x in min_x..=max_x {
-            for y in min_y..=max_y {
-                freq_count.entry(Point{x, y}).and_modify(|n| *n += 1).or_insert(1);
-            }
+        for p in l.into_iter() {
+            freq_count.entry(p).and_modify(|n| *n += 1).or_insert(1);
         }
     }
 
     freq_count
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash) ]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd) ]
 struct Point { x: Number, y: Number }
 
 impl Display for Point {
@@ -40,9 +47,39 @@ impl Display for Point {
 
 impl Point {
     fn bounding_box(&self, rhs: &Point) -> (Point, Point) {
-        let min_pt = Point { x: Number::min(self.x, rhs.x), y: Number::min(self.y, rhs.y) };
-        let max_pt = Point { x: Number::max(self.x, rhs.x), y: Number::max(self.y, rhs.y) };
-        (min_pt, max_pt)
+        let (x0, x1) = self.minmax_x(rhs);
+        let (y0, y1) = self.minmax_y(rhs);
+
+        ( Point { x: x0, y: y0 }, Point { x: x1, y: y1 } )
+    }
+
+    fn minmax_x(&self, rhs: &Point) -> (Number, Number) {
+        if self.x < rhs.x { (self.x, rhs.x) } else { (rhs.x, self.x) }
+    }
+    fn minmax_y(&self, rhs: &Point) -> (Number, Number) {
+        if self.y < rhs.y { (self.y, rhs.y) } else { (rhs.y, self.y) }
+    }
+}
+
+impl AddAssign for Point {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = Self { x: self.x + rhs.x, y: self.y + rhs.y }
+    }
+}
+
+struct LineIterator { p: Point, dt: Point, nb_ite: usize }
+impl Iterator for LineIterator {
+    type Item = Point;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.nb_ite > 0 {
+            let p = self.p;
+            self.nb_ite -= 1;
+            self.p += self.dt;
+            println!("Next = {}", p);
+            Some(p)
+        } else {
+            None
+        }
     }
 }
 
@@ -64,6 +101,43 @@ impl Line {
 
     fn is_vertical(&self) -> bool   { self.p0.x == self.p1.x }
     fn is_horizontal(&self) -> bool { self.p0.y == self.p1.y }
+
+    fn min_x(&self) -> Number { Number::min(self.p0.x, self.p1.x) }
+    fn max_x(&self) -> Number { Number::max(self.p0.x, self.p1.x) }
+
+    fn normalize(&self) -> Self {
+        if self.p0.x < self.p1.x { self.clone() }
+        else { self.swap() }
+    }
+    fn swap(&self) -> Self { Line { p0: self.p1, p1: self.p0 } }
+}
+
+
+impl Display for Line {
+    fn fmt(&self, l: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(l, "({}, {})", self.p0, self.p1)
+    }
+}
+
+impl IntoIterator for Line {
+    type Item = Point;
+    type IntoIter =  LineIterator;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let dx = self.p1.x - self.p0.x;
+        let dy = self.p1.y - self.p0.y;
+        let nb_ite: usize = dx.abs().max(dy.abs()).try_into().unwrap();
+
+        if dx != 0 && dy != 0 && dx.abs() != dy.abs() {
+            panic!("Unexpected. Line = {} is neither horizontal, vertical or at a 45 degree angle.", self)
+        }
+
+        LineIterator {
+            p: self.p0,
+            dt: Point { x: dx.signum(), y: dy.signum() },
+            nb_ite: nb_ite + 1,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -181,7 +255,9 @@ pub(self) mod tests {
             (p!(1, 4), 1), (p!(2, 4), 1), (p!(3, 4), 2), (p!(4, 4), 1), (p!(5, 4), 1), (p!(6, 4), 1), (p!(7, 4), 2), (p!(8, 4), 1), (p!(9, 4), 1),
             (p!(0, 9), 2), (p!(1, 9), 2), (p!(2, 9), 2), (p!(3, 9), 1), (p!(4, 9), 1), (p!(5, 9), 1),
         ];
-        let draw_board = draw_lines(LINES.iter());
+        let draw_board = draw_lines(
+            LINES.iter().filter(|l| l.is_horizontal() || l.is_vertical())
+        );
         for (k, v) in &EXPECTED {
             assert_eq!(draw_board.get(k), Some(v), "Entry {} mismatch", k)
         }
@@ -189,7 +265,9 @@ pub(self) mod tests {
 
     #[test]
     fn test_part1() {
-        let draw_board = draw_lines(LINES.iter());
+        let draw_board = draw_lines(
+            LINES.iter().filter(|l| l.is_horizontal() || l.is_vertical())
+        );
         let intersect_counts = draw_board.iter().filter(|(_ ,&v)| v > 1).count();
         assert_eq!(intersect_counts, 5)
     }
