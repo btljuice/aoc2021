@@ -2,8 +2,15 @@ use std::fmt::{Debug, Display, Formatter};
 use std::str::FromStr;
 use itertools::Itertools;
 use std::collections::HashMap;
+use crate::common;
 
 type Number = u32;
+
+pub fn part1() -> usize {
+    let lines = parse_lines(common::read_lines("../input/day5.txt").into_iter()).unwrap();
+    let drawn = draw_lines(lines.iter());
+    drawn.iter().filter(|(_, &v)| v > 1).count()
+}
 
 fn draw_lines<'a>(lines: impl Iterator<Item=&'a Line>) -> HashMap<Point, u32> {
     let mut freq_count = HashMap::<Point, u32>::new();
@@ -11,10 +18,9 @@ fn draw_lines<'a>(lines: impl Iterator<Item=&'a Line>) -> HashMap<Point, u32> {
     for l in lines {
         if !l.is_horizontal() && !l.is_vertical() { continue; }
 
-        let ((min_x, min_y), (max_x,max_y)) = l.bounding_box().to_tuples();
+        let ((min_x, min_y), (max_x, max_y)) = l.bounding_box().to_tuples();
         for x in min_x..=max_x {
             for y in min_y..=max_y {
-                println!("Adding {}, {}", x, y);
                 freq_count.entry(Point{x, y}).and_modify(|n| *n += 1).or_insert(1);
             }
         }
@@ -78,9 +84,9 @@ struct WithLineNumber<T: Debug> { line_no: usize, value: T }
 #[derive(Debug, PartialEq)]
 struct LineParseErrors { errors: Vec<WithLineNumber<LineParseError>> }
 
-fn parse_lines<'a>(lines: impl Iterator<Item=&'a str>) -> Result<Vec<Line>, LineParseErrors> {
+fn parse_lines<T: AsRef<str>>(lines: impl Iterator<Item= T>) -> Result<Vec<Line>, LineParseErrors> {
     let (lines, errors): (Vec<_>, Vec<_>) = lines.enumerate()
-        .map(|(i, l)| l.parse::<Line>().map_err(|e| WithLineNumber { line_no: i+1, value: e }))
+        .map(|(i, l)| l.as_ref().parse::<Line>().map_err(|e| WithLineNumber { line_no: i+1, value: e }))
         .partition_result();
     if !errors.is_empty() { Err(LineParseErrors{ errors }) }
     else { Ok(lines) }
@@ -179,5 +185,12 @@ pub(self) mod tests {
         for (k, v) in &EXPECTED {
             assert_eq!(draw_board.get(k), Some(v), "Entry {} mismatch", k)
         }
+    }
+
+    #[test]
+    fn test_part1() {
+        let draw_board = draw_lines(LINES.iter());
+        let intersect_counts = draw_board.iter().filter(|(_ ,&v)| v > 1).count();
+        assert_eq!(intersect_counts, 5)
     }
 }
