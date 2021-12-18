@@ -7,6 +7,7 @@ name = "aoc2021"
 version = "0.1.0"
 dependencies = [
  "itertools",
+ "rdxsort",
 ]
 
 [[package]]
@@ -23,3 +24,9 @@ checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
 dependencies = [
  "either",
 ]
+
+[[package]]
+name = "rdxsort"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75963a5f70eb99b7a82bcf70946429fc3f82c1ca6718609976622c343750c169"
