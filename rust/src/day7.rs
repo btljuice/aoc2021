@@ -1,35 +1,32 @@
-use super::common;
 use rdxsort::*;
 use conv::*;
+use itertools::Itertools;
+
+use super::common::delta;
+use super::common::sum_n;
 
 type PosType = u16;
 
-struct Crabs { positions: Vec<PosType> }
+pub(self) struct Crabs { positions: Vec<PosType> }
 impl Crabs {
   pub fn displace<F>(&self, cost_fn: F) -> u32 where F: Fn(PosType) -> u32 { self.positions.iter().map(|&p| cost_fn(p)).sum() }
   pub fn sorted(&mut self) { self.positions.rdxsort(); }
 }
 
-pub(self) mod part1 {
-  use super::common::delta;
+/// Strategy here is to compute the displacement at the median.
+/// The cost displacement function is of the form |x - c|
+/// When aggregating |x - c| functions, in can be shown that the minimum is at the median region
+/// of all aggregate functions.
+pub(self) fn min_displace_part1(crabs: &mut Crabs) -> u32 {
+    if crabs.positions.is_empty() { return 0; }
+    crabs.sorted();
 
-  impl super::Crabs {
-    /// Strategy here is to compute the displacement at the median.
-    /// The cost displacement function is of the form |x - c|
-    /// When aggregating |x - c| functions, in can be shown that the minimum is at the median region
-    /// of all aggregate functions.
-    pub fn min_displace_part1(&mut self) -> u32 {
-      if self.positions.is_empty() { return 0; }
-      self.sorted();
+    let n = crabs.positions.len();
+    // For an even number of crabs (absolute functions) any point between the 2 medians constitute
+    // the minimal plateau. Thus we just pick the median at the odd index.
+    let median = crabs.positions[n / 2];
 
-      let n = self.positions.len();
-      // For an even number of crabs (absolute functions) any point between the 2 medians constitute
-      // the minimal plateau. Thus we just pick the median at the odd index.
-      let median = self.positions[n / 2];
-
-      self.displace(|p| delta(median, p) as u32)
-    }
-  }
+    crabs.displace(|p| delta(median, p) as u32)
 }
 
 ///
@@ -44,7 +41,7 @@ pub(self) mod part1 {
 /// sum of aggregated cost functions
 /// ∑ c' = nx - ∑ p + [(n-i)*(-1/2) + i*1/2]
 ///      = nx -  P  + [-n/2 + i]
-///      = nx -  P-n/2 + i
+///      = nx -  (P+n/2) + i
 ///      = nx - C + i
 /// 1st term nx increases with x
 /// 2nd term P-n/2 is constant
@@ -59,62 +56,48 @@ pub(self) mod part1 {
 ///
 /// Examples in graph: https://www.desmos.com/calculator/7i48ybrrz5
 /// The aggregated cost
-pub(self) mod part2 {
-  use std::convert::TryInto;
-  use conv::{ValueFrom, ValueInto};
-  use itertools::Itertools;
-  use super::common::sum_n;
-  use super::common::delta;
-  use super::PosType;
+pub(self) fn min_displace_part2(crabs: &mut Crabs) -> u32 {
+  fn cost(a: PosType, b: PosType) -> u32 { sum_n(delta(a, b) as u32) }
+  fn total_cost(crabs: &Crabs, a: PosType) -> u32 { crabs.displace(|b| cost(a, b)) }
 
-  /// Here I made on purpose to have a second and different implementation of Crabs
-  /// to validate that 2 different implementations may coexist in different module w/o clashing.
-  impl super::Crabs {
-    fn total_cost(&self, a: PosType) -> u32 {
-      fn cost(a: PosType, b: PosType) -> u32 { sum_n(delta(a, b) as u32) }
-      self.displace(|b| cost(a, b))
-    }
+  if crabs.positions.is_empty() { return 0; }
+  crabs.sorted();
 
-    pub fn min_displace(&mut self) -> u32 {
+  let n: f64 = crabs.positions.len() as f64;
+  let P: f64 = crabs.positions.iter().map(|&p| f64::from(p)).sum();
+  let C: f64 = P + 0.5*n;
 
-      if self.positions.is_empty() { return 0; }
-      self.sorted();
+  let d_cost = |x: PosType, i: usize| -> f64 { n * f64::from(x) + f64::value_from(i).unwrap() - C };
 
-      let n: f64 = self.positions.len() as f64;
-      let P: f64 = self.positions.iter().map(|&p| f64::from(p)).sum();
-      let C: f64 = P - 0.5*n;
+  for (i, (&x0, &x1)) in crabs.positions.iter().tuple_windows::<(&PosType,&PosType)>().enumerate() {
+    let d1 = d_cost(x1, i+1); // derivative on the left of x1
+    if d1 < 0.0 { continue; } // function is still decreasing between [x0, x1[
 
-      let d_cost = |x: PosType, i: usize| -> f64 { n * f64::from(x) + f64::value_from(i).unwrap() - C };
-
-      for (i, (&x0, &x1)) in self.positions.iter().tuple_windows::<(&PosType,&PosType)>().enumerate() {
-        let d1 = d_cost(x1, i+1); // derivative on the left of x1
-        if d1 < 0.0 { continue; } // function is still decreasing between [x0, x1[
-
-        let d0 = d_cost(x0, i+1); // derivative on the right of x0
-        if d0 >= 0.0 { return self.total_cost(x0); } // both derivative are increasing. Return x0
-        else {
-          let x_min: f64 = (C - f64::value_from(i).unwrap()) / n;
-          let x_min0: PosType = x_min.ceil() as PosType;
-          let x_min1: PosType = x_min.floor() as PosType;
-          let c_min0: u32 = self.total_cost(x_min0);
-          let c_min1: u32 = self.total_cost(x_min1);
-          return c_min0.min(c_min1);
-        }
-      }
-
-      let &last = self.positions.last().unwrap();
-      self.total_cost(last)
+    let d0 = d_cost(x0, i+1); // derivative on the right of x0
+    if d0 >= 0.0 {
+      return total_cost(crabs, x0);
+    } // both derivative are increasing. Return x0
+    else {
+      let x_min: f64 = (C - f64::value_from(i).unwrap()) / n;
+      let x_min0: PosType = x_min.ceil() as PosType;
+      let x_min1: PosType = x_min.floor() as PosType;
+      let c_min0: u32 = total_cost(crabs, x_min0);
+      let c_min1: u32 = total_cost(crabs, x_min1);
+      return c_min0.min(c_min1);
     }
   }
+
+  let &last = crabs.positions.last().unwrap();
+  total_cost(crabs, last)
 }
 
 #[cfg(test)]
-mod test_part1 {
+mod test {
+  use crate::common;
   use crate::common::delta;
+  use crate::day7::{min_displace_part1, min_displace_part2};
   use super::PosType;
   use super::Crabs;
-  use super::common;
-  use super::part1::*;
 
   const POSITIONS: [PosType; 10] = [16, 1, 2, 0, 4, 2, 7, 1, 2, 14];
 
@@ -131,16 +114,30 @@ mod test_part1 {
   }
 
   #[test]
-  fn test_min_displace() {
+  fn test_min_displace_part1() {
     let mut crabs = Crabs { positions: POSITIONS.to_vec() };
-    assert_eq!(crabs.min_displace_part1(), 37);
+    assert_eq!(min_displace_part1(&mut crabs), 37);
   }
 
   #[test]
   fn part1() {
     let positions = common::read_comma_separated("../input/day7.txt");
     let mut crabs = Crabs { positions };
-    let sln = crabs.min_displace_part1();
+    let sln = min_displace_part1(&mut crabs);
     println!("Part1 solution = {}", sln);
+  }
+
+  #[test]
+  fn test_min_displace_part2() {
+    let mut crabs = Crabs { positions: POSITIONS.to_vec() };
+    assert_eq!(min_displace_part2(&mut crabs), 168);
+  }
+
+  #[test]
+  fn part2() {
+    let positions = common::read_comma_separated("../input/day7.txt");
+    let mut crabs = Crabs { positions };
+    let sln = min_displace_part2(&mut crabs);
+    println!("Part2 solution = {}", sln);
   }
 }
