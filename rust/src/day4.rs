@@ -166,7 +166,7 @@ pub(self) mod bingo {
             parse_card(&slices)
         }
 
-        let mut lines = common::read_lines(filename);
+        let mut lines = common::parse::read_lines(filename);
         let draw: Draw = parse_draw(lines.next().as_deref())?;
         let cards: Vec<Card> = lines
             .chunks(6)

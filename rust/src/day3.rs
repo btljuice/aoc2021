@@ -2,14 +2,14 @@ use super::common;
 
 pub fn part1() -> u32 {
     let bitvecs =
-        common::read_lines("../input/day3.txt")
+        common::parse::read_lines("../input/day3.txt")
             .map(|l| to_bitvec(l.as_str()));
     power_consumption(bitvecs)
 }
 
 pub fn part2() -> u32 {
     let bitvecs: Vec<Vec<bool>> =
-        common::read_lines("../input/day3.txt")
+        common::parse::read_lines("../input/day3.txt")
             .map(|l| to_bitvec(l.as_str())).collect();
 
     let o2_rating = oxygen_rating(bitvecs.clone());

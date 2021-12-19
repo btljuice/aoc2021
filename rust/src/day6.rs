@@ -12,7 +12,7 @@ type PopSize = u64;
 
 
 pub fn part1_and_2() {
-   let first_line: String = common::read_lines("../input/day6.txt").next().unwrap();
+   let first_line: String = common::parse::read_lines("../input/day6.txt").next().unwrap();
    let mut fishes: LanternFish = first_line.parse().unwrap();
 
    for _ in 1..=80 { fishes.next_day() }

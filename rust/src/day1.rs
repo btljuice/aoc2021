@@ -21,6 +21,6 @@ fn count_increases(depths: impl Iterator<Item = u32>) -> u32 {
 }
 
 fn depths() -> impl Iterator<Item = u32> {
-    common::read_lines("../input/day1.txt")
+    common::parse::read_lines("../input/day1.txt")
         .map(|s| s.parse::<u32>().unwrap())
 }

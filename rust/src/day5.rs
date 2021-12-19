@@ -9,7 +9,7 @@ use crate::common;
 type Number = i32;
 
 pub fn part1() -> usize {
-    let lines = parse_lines(common::read_lines("../input/day5.txt")).unwrap();
+    let lines = parse_lines(common::parse::read_lines("../input/day5.txt")).unwrap();
 
     let drawn = draw_lines(
         lines.iter().filter(|l| l.is_vertical() || !l.is_horizontal())
@@ -18,7 +18,7 @@ pub fn part1() -> usize {
 }
 
 pub fn part2() -> usize {
-    let lines = parse_lines(common::read_lines("../input/day5.txt")).unwrap();
+    let lines = parse_lines(common::parse::read_lines("../input/day5.txt")).unwrap();
 
     let drawn = draw_lines(lines.iter());
     drawn.iter().filter(|(_, &v)| v > 1).count()

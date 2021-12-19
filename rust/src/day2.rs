@@ -1,13 +1,13 @@
 use super::common;
 
 pub fn part1() -> i32 {
-    let directions = common::read_lines("../input/day2.txt").map(|s| direction::from(s.as_str()));
+    let directions = common::parse::read_lines("../input/day2.txt").map(|s| direction::from(s.as_str()));
     let (x, y) = direction::to_coord(directions);
     x * y
 }
 
 pub fn part2() -> i32 {
-    let directions = common::read_lines("../input/day2.txt").map(|s| direction::from(s.as_str()));
+    let directions = common::parse::read_lines("../input/day2.txt").map(|s| direction::from(s.as_str()));
     let (x, d, _) = directions.fold((0, 0, 0), |(x, d, a), dir| match dir {
         Direction::Forward(dx) => (x + dx, d + a*dx, a),
         Direction::Down(da) => (x, d, a + da),

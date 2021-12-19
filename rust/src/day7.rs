@@ -2,8 +2,8 @@ use rdxsort::*;
 use conv::*;
 use itertools::Itertools;
 
-use super::common::delta;
-use super::common::sum_n;
+use super::common::math::delta;
+use super::common::math::sum_n;
 
 type PosType = u16;
 
@@ -75,6 +75,7 @@ pub(self) fn min_displace_part2(crabs: &mut Crabs) -> u32 {
 
     let d0 = d_cost(x0, i+1); // derivative on the right of x0
     if d0 >= 0.0 {
+      println!("minimum found at x0 = {}, cost = {}", x0, total_cost(crabs, x0));
       return total_cost(crabs, x0);
     } // both derivative are increasing. Return x0
     else {
@@ -94,7 +95,7 @@ pub(self) fn min_displace_part2(crabs: &mut Crabs) -> u32 {
 #[cfg(test)]
 mod test {
   use crate::common;
-  use crate::common::delta;
+  use crate::common::math::delta;
   use crate::day7::{min_displace_part1, min_displace_part2};
   use super::PosType;
   use super::Crabs;
@@ -121,7 +122,7 @@ mod test {
 
   #[test]
   fn part1() {
-    let positions = common::read_comma_separated("../input/day7.txt");
+    let positions = common::parse::read_comma_separated("../input/day7.txt");
     let mut crabs = Crabs { positions };
     let sln = min_displace_part1(&mut crabs);
     println!("Part1 solution = {}", sln);
@@ -135,7 +136,7 @@ mod test {
 
   #[test]
   fn part2() {
-    let positions = common::read_comma_separated("../input/day7.txt");
+    let positions = common::parse::read_comma_separated("../input/day7.txt");
     let mut crabs = Crabs { positions };
     let sln = min_displace_part2(&mut crabs);
     println!("Part2 solution = {}", sln);
