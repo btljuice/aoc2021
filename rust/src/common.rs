@@ -8,7 +8,7 @@ use std::path::Path;
 use std::str::FromStr;
 use std::fmt::Debug;
 use std::cmp::Ord;
-use std::ops::Sub;
+use std::ops::{Add, Div, Mul, Sub};
 use itertools::Itertools;
 
 /** @todo convert return type to Result<impl Iterator<Item=String>, {Error}> on first error */
@@ -37,4 +37,10 @@ pub fn freq_count<Q, T, K>(ite: impl Iterator<Item=Q>, f: fn(&T) -> K) -> HashMa
     freqs
 }
 
-pub fn delta<N: Ord + Sub>(a: N, b: N) -> <N as Sub>::Output { if a > b { a - b } else { b - a } }
+pub fn delta<N: Ord + Sub<Output=N>>(a: N, b: N) -> N { if a > b { a - b } else { b - a } }
+
+pub fn sum_n<N>(n: N) -> N
+    where N: Add<Output=N> + Mul<Output=N> + Div<Output=N> + From<u8> + Copy
+{
+    n * (n + 1.into() ) / 2.into()
+}
