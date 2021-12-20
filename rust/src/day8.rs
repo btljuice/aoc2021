@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::TryInto};
 use itertools::Itertools;
 
 use super::common;
@@ -87,27 +87,59 @@ fn signal_rosetta(ten_digits: &[Digit; 10]) -> Rosetta {
 
     [a, b, c, d, e, f, g]
 }
-
-fn translate_signal<'a>(digits: impl Iterator<Item=&'a Digit>, rosetta: &Rosetta) -> Vec<u8> {
-    let mut translated = Vec::<u8>::new();
-    for digit in digits {
-        // Start by matching on length of lens
-        let t: u8 = match digit.len() {
-            2 => 1,
-            4 => 4,
-            3 => 7,
-            7 => 8,
-            5 if digit.contains(&rosetta[Signal::E as usize]) => 2,
-            5 if digit.contains(&rosetta[Signal::B as usize]) => 5,
-            5 => 3,
-            6 if !digit.contains(&rosetta[Signal::D as usize]) => 0,
-            6 if !digit.contains(&rosetta[Signal::C as usize]) => 6,
-            6 if !digit.contains(&rosetta[Signal::E as usize]) => 9,
-            _ => panic!("Impossible digit {:#?}", digit)
-        };
-        translated.push(t);
+ 
+fn translate_digit(digit: &Digit, rosetta: &Rosetta) -> u8 {
+    // Start by matching on length of lens
+    match digit.len() {
+        2 => 1,
+        4 => 4,
+        3 => 7,
+        7 => 8,
+        5 if digit.contains(&rosetta[Signal::E as usize]) => 2,
+        5 if digit.contains(&rosetta[Signal::B as usize]) => 5,
+        5 => 3,
+        6 if !digit.contains(&rosetta[Signal::D as usize]) => 0,
+        6 if !digit.contains(&rosetta[Signal::C as usize]) => 6,
+        6 if !digit.contains(&rosetta[Signal::E as usize]) => 9,
+        _ => panic!("Impossible digit {:#?}", digit)
     }
+}
+
+fn translate_digits<'a>(digits: impl Iterator<Item=&'a Digit>, rosetta: &Rosetta) -> Vec<u8> {
+    let mut translated = Vec::<u8>::new();
+    for digit in digits { translated.push(translate_digit(digit, &rosetta)); }
     translated
+}
+
+fn parse_digit(s: &str) -> Digit {
+    s.chars().into_iter().map(|c| match c {
+        'a' => Signal::A,
+        'b' => Signal::B,
+        'c' => Signal::C,
+        'd' => Signal::D,
+        'e' => Signal::E,
+        'f' => Signal::F,
+        'g' => Signal::G,
+         _ => panic!("Unknown character {}", c)
+    }).collect_vec()
+}
+
+fn translate_digits_from_file(filename: &str) -> impl Iterator<Item=Vec<u8>> {
+    let lines = common::parse::read_lines(filename);
+    lines
+      .enumerate()
+      .map( |(i, l)| {
+        let (s0, s1) = l.split_once('|').expect(format!("Unable to find | on line {}", i).as_str());
+        let ten_digits: [Digit; 10] = s0.split_whitespace().map(parse_digit).collect_vec().try_into().unwrap();
+        let rosetta: Rosetta = signal_rosetta(&ten_digits);
+        let digits: Vec<Digit> = s1.split_whitespace().map(parse_digit).collect_vec();
+        digits.iter().map(|d| translate_digit(&d, &rosetta)).collect_vec()
+      })
+}
+
+fn translate_numbers_from_file(filename: &str) -> impl Iterator<Item=u32> {
+    let numbers = translate_digits_from_file(filename);
+    numbers.map(|digits| digits.iter().fold(0u32, |acc, &d| acc*10 + u32::from(d)))
 }
 
 #[cfg(test)]
@@ -117,6 +149,7 @@ mod test {
 
 
     const TEN_DIGITS: [&[Signal]; 10] = [ 
+                                 // Translated
         &[B, E],                 // 1: C, F
         &[C, F, B, E, G, A, D],  // 8: 
         &[C, B, D, G, E, F],     // 9: [D, C, A, B, F, G]
@@ -142,8 +175,45 @@ mod test {
         let digits: [Digit; 10] = ten_digits();
         let rosetta = signal_rosetta(&digits);
 
-        let translated = translate_signal(digits.iter(), &rosetta);
+        let translated = translate_digits(digits.iter(), &rosetta);
 
         assert_eq!(translated, vec![1, 8, 9, 6, 4, 5, 0, 3, 2, 7]);
     }
+
+    #[test]
+    fn test_parse_digit() {
+        let digit = parse_digit("abcd");
+        assert_eq!(digit, vec![A, B, C, D]);
+    }
+
+    #[test]
+    fn test_sample_part1() {
+        let digits = translate_digits_from_file("../input/day8_sample.txt").flatten();
+        let count = digits.filter(|&n| n == 1 || n == 4 || n == 7 || n == 8).count();
+        assert_eq!(count, 26);
+    }
+
+    #[test]
+    fn test_part1() {
+        let digits = translate_digits_from_file("../input/day8.txt").flatten();
+        let count = digits.filter(|&n| n == 1 || n == 4 || n == 7 || n == 8).count();
+        println!("part 1 answer = {}", count);
+        assert_eq!(count, 539);
+    }
+
+    #[test]
+    fn test_sample_part2() {
+        let numbers = translate_numbers_from_file("../input/day8_sample.txt").collect_vec();
+        assert_eq!(numbers, vec![ 8394, 9781, 1197, 9361, 4873, 8418, 4548, 1625, 8717, 4315 ]);
+        assert_eq!(numbers.iter().sum::<u32>(), 61229);
+    }
+
+    #[test]
+    fn test_part2() {
+        let numbers = translate_numbers_from_file("../input/day8.txt");
+        let sum: u32 = numbers.sum();
+        println!("part 2 answer = {}", sum);
+        assert_eq!(sum, 1084606);
+    }
+
 }
