@@ -16,6 +16,9 @@ const SIGNALS: [Signal; 7] = [
     Signal::G
 ];
 
+type Digit = Vec<Signal>;
+type Rosetta = [Signal; 7];
+
 
 /// The following uses a deterministic way to find the mapping between the wiring -> light-led signals
 /// ```
@@ -49,7 +52,7 @@ const SIGNALS: [Signal; 7] = [
 /// - Maybe convert digits representation to u8 or a bitvec
 /// - Flagging / discovering leds could be done w/ & | bit-wise operators
 /// 
-fn signal_rosetta(ten_digits: &[Vec<Signal>; 10]) -> [Signal; 7] {
+fn signal_rosetta(ten_digits: &[Digit; 10]) -> Rosetta {
     let led_freqs: HashMap<Signal, u64> = common::collections::freq_count(ten_digits.iter().flatten().map(|&s| s));
 
     // Exploratory choice of the moment: Prefer a closure over a macro, to minimize macro usages. 
@@ -61,7 +64,7 @@ fn signal_rosetta(ten_digits: &[Vec<Signal>; 10]) -> [Signal; 7] {
     let led_with_freq = |n: u64| { led_freqs.iter().find(|(_, &f)| f == n).expect(format!("Unable to find a led w/ {} occurences", n).as_str()) };
     let digit_with_leds = |n: usize| { ten_digits.iter().find(|leds| leds.len() == n).expect(format!("Unable to find digit w/ {} leds", n).as_str()) };
 
-    fn remaining_led(digit: &Vec<Signal>, to_remove: &[Signal]) -> Signal {
+    fn remaining_led(digit: &Digit, to_remove: &[Signal]) -> Signal {
         // Assumes there's only one
         *digit.iter().find(|led| ! to_remove.iter().contains(led))
             .expect(format!("Unable remaining led for digit= {:#?}, while removing {:?}", digit, to_remove).as_str())
@@ -85,27 +88,62 @@ fn signal_rosetta(ten_digits: &[Vec<Signal>; 10]) -> [Signal; 7] {
     [a, b, c, d, e, f, g]
 }
 
+fn translate_signal<'a>(digits: impl Iterator<Item=&'a Digit>, rosetta: &Rosetta) -> Vec<u8> {
+    let mut translated = Vec::<u8>::new();
+    for digit in digits {
+        // Start by matching on length of lens
+        let t: u8 = match digit.len() {
+            2 => 1,
+            4 => 4,
+            3 => 7,
+            7 => 8,
+            5 if digit.contains(&rosetta[Signal::E as usize]) => 2,
+            5 if digit.contains(&rosetta[Signal::B as usize]) => 5,
+            5 => 3,
+            6 if !digit.contains(&rosetta[Signal::D as usize]) => 0,
+            6 if !digit.contains(&rosetta[Signal::C as usize]) => 6,
+            6 if !digit.contains(&rosetta[Signal::E as usize]) => 9,
+            _ => panic!("Impossible digit {:#?}", digit)
+        };
+        translated.push(t);
+    }
+    translated
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use super::Signal::*;
-    
+
+
     const TEN_DIGITS: [&[Signal]; 10] = [ 
-        &[B, E],
-        &[C, F, B, E, G, A, D],
-        &[C, B, D, G, E, F],
-        &[F, G, A, E, C, D],
-        &[C, G, E, B],
-        &[F, D, C, G, E],
-        &[A, G, E, B, F, D],
-        &[F, E, C, D, B],
-        &[F, A, B, C, D],
-        &[E, D, B],
+        &[B, E],                 // 1: C, F
+        &[C, F, B, E, G, A, D],  // 8: 
+        &[C, B, D, G, E, F],     // 9: [D, C, A, B, F, G]
+        &[F, G, A, E, C, D],     // 6: [G, B, E, F, D, A]
+        &[C, G, E, B],           // 4: [D, B, F, C]
+        &[F, D, C, G, E],        // 5: [G, A, D, B, F]
+        &[A, G, E, B, F, D],     // 0: [E, B, F, C, G, A]
+        &[F, E, C, D, B],        // 3: [G, F, D, A, C]
+        &[F, A, B, C, D],        // 2: [G, E, C, D, A] 
+        &[E, D, B],              // 7: [F, A, C]
     ];
+
+    fn ten_digits() -> [Digit; 10] { TEN_DIGITS.map(|d| d.to_vec()) }
 
     #[test]
     fn test_signal_rosetta() {
-        let rosetta = signal_rosetta(&TEN_DIGITS.map(|d| d.to_vec()));
+        let rosetta = signal_rosetta(&ten_digits());
         assert_eq!(rosetta, [D, G, B, C, A, E, F]);
+    }
+
+    #[test]
+    fn test_translate_digit() {
+        let digits: [Digit; 10] = ten_digits();
+        let rosetta = signal_rosetta(&digits);
+
+        let translated = translate_signal(digits.iter(), &rosetta);
+
+        assert_eq!(translated, vec![1, 8, 9, 6, 4, 5, 0, 3, 2, 7]);
     }
 }
