@@ -48,11 +48,11 @@ impl HeightMap {
     }
   }
 
-  fn minimas(&self) -> Vec<u8> {
+  fn minimas(&self) -> Vec<(Index, u8)> {
     self
       .heights
       .indexed_iter()
-      .filter_map( |(ij, &h)| when!(self.is_minima(ij), h + 1) )
+      .filter_map( |(ij, &h)| when!(self.is_minima(ij), (ij, h + 1)) )
       .collect()
   }
 
@@ -71,8 +71,6 @@ impl HeightMap {
 
   /// Tailcall exploration. For this one, since both `visited and `to_visit` are mutable structures, I tend to think
   /// a while loop would have been better, but wanted to explore tailcalls in Rust.
-  /// 
-  /// **OPTME**: accrue the basin size, since this is the goal and we don't really care about visited.
   #[tailcall]
   fn basin_impl(hmap: &HeightMap, mut visited: Array2<bool>, mut to_visit: VecDeque<Index>, nb_visited: usize) -> (Array2<bool>, usize) {
     let already_visited = |ij: Index| -> bool { 
@@ -176,8 +174,7 @@ use super::Index;
   #[test]
   fn test_minimas() {
     let height_map = HEIGHT_MAP!();
-    let mut mins = height_map.minimas();
-    mins.sort();
+    let mins = height_map.minimas().into_iter().map(|(_, v)| v).sorted().collect_vec();
     assert_eq!(mins, vec![1, 2, 6, 6])
   }
 
@@ -185,7 +182,7 @@ use super::Index;
   fn test_part1() {
     let content = fs::read_to_string("../input/day9.txt").unwrap();
     let height_map: HeightMap = content.parse::<HeightMap>().unwrap(); // TODO: replace by into_ok() when ! gets stabilized
-    let sum: u32 = height_map.minimas().into_iter().map_into::<u32>().sum();
+    let sum: u32 = height_map.minimas().into_iter().map(|(_, v)| v as u32).sum();
     println!("day9 part 1 answer = {}", sum);
     assert_eq!(sum, 494);
   }
