@@ -217,6 +217,16 @@ mod test {
     assert_eq!(largest, vec![14, 9, 9]);
   }
 
+  #[test]
+  fn test_part2() {
+    let content = fs::read_to_string("../input/day9.txt").unwrap();
+    let height_map: HeightMap = content.parse::<HeightMap>().unwrap(); // TODO: replace by into_ok() when ! gets stabilized
+    let largest = height_map.largest_basin_sizes(3);
+    let answer = largest.into_iter().product::<usize>();
+    println!("day9 part 2 answer = {}", answer);
+    assert_eq!(answer, 1048128);
+  }
+
   fn test_basin(center: (usize, usize), expected: Vec<(usize, usize)>) {
     let height_map = HEIGHT_MAP!();
     let basin = height_map.basin(center);
@@ -226,5 +236,6 @@ mod test {
 
     assert_eq!(basin, expected_basin);
   }
+
 
 }
