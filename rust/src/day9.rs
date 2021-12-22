@@ -78,6 +78,8 @@ impl FromStr for HeightMap {
 
 #[cfg(test)]
 mod test {
+  use std::fs;
+  use itertools::Itertools;
   use ndarray::array;
 
   use super::HeightMap;
@@ -121,5 +123,14 @@ mod test {
     let mut mins = height_map.minimas();
     mins.sort();
     assert_eq!(mins, vec![1, 2, 6, 6])
+  }
+
+  #[test]
+  fn test_part1() {
+    let content = fs::read_to_string("../input/day9.txt").unwrap();
+    let height_map: HeightMap = content.parse::<HeightMap>().unwrap(); // TODO: replace by into_ok() when ! gets stabilized
+    let sum: u32 = height_map.minimas().into_iter().map_into::<u32>().sum();
+    println!("day9 part 1 answer = {}", sum);
+    assert_eq!(sum, 494);
   }
 }
