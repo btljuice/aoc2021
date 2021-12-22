@@ -52,11 +52,11 @@ impl HeightMap {
       .filter_map( |((i, j), &h)| if self.is_minima(i, j) { Some(h + 1) } else { None } )
       .collect()
   }
+
 }
 
 impl FromStr for HeightMap {
-    type Err = Infallible;
-
+    type Err = Infallible; // TODO: Change to !
     fn from_str(s: &str) -> Result<Self, Self::Err> {
       let nb_columns = s.chars().take_while(|&c| c != '\n').count();
       let nb_rows = s.split('\n').count();
