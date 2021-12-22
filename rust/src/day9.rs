@@ -58,9 +58,9 @@ impl HeightMap {
 
   fn largest_basin_sizes(&self, nth_largest: usize) -> Vec<usize> {
     self
-      .heights
-      .indexed_iter()
-      .map( |(ij,_)| self.basin(ij).1 )
+      .minimas()
+      .into_iter()
+      .map(|(ij, _)| self.basin(ij).1 )
       .fold(Vec::<usize>::new(), |mut largest, sz| {
         largest.push(sz);
         largest.sort_by(|a, b| b.cmp(a));
