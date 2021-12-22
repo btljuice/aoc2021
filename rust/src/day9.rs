@@ -1,8 +1,13 @@
+
+use std::collections::VecDeque;
 use std::convert::Infallible;
+use std::fmt::Debug;
 use std::result::Result;
 use std::str::FromStr;
 use itertools::Itertools;
 use ndarray::Array2;
+use tailcall::tailcall;
+use super::common::macros::when;
 
 #[derive(Debug, PartialEq)]
 struct HeightMap { heights: Array2<u8> }
@@ -15,28 +20,23 @@ impl HeightMap {
     HeightMap { heights: Array2::from_shape_vec(dim, numbers).expect("Invalid HeightMap Shape ") }
   }
 
-  fn get_adjacents(&self, i: isize, j: isize) -> Vec<((isize, isize), u8)> {
-    let up    = (i - 1, j    );
-    let down  = (i + 1, j    );
-    let left  = (i    , j - 1);
-    let right = (i    , j + 1);
+  fn get_adjacents(&self, (i, j) :(usize, usize)) -> Vec<((usize, usize), u8)> {
+    let up    = when!(i > 0,          (i - 1, j));
+    let down  = when!(i < usize::MAX, (i + 1, j));
+    let left  = when!(j > 0,          (i, j - 1));
+    let right = when!(j < usize::MAX, (i, j + 1));
     [up, down, left, right]
-      .iter()
-      .filter_map(|&(i, j)| self.get(i, j).map( |v| ((i, j), v) )
+      .into_iter()
+      .flatten()
+      .filter_map(|&ij| self.get(ij).map(|v| (ij, v))
       ).collect()
   } 
 
-  fn get(&self, i: isize, j: isize) -> Option<u8> {
-      if i < 0 || j < 0 { None }
-      else { self.heights.get((i as usize, j as usize)).copied() }
-  }
+  fn get(&self, ij: (usize, usize)) -> Option<u8> { self.heights.get(ij).copied() }
 
-  fn is_minima(&self, i: usize, j: usize) -> bool {
-    let i = i as isize; // Deliberately skipped that coercion by laziness
-    let j = j as isize; // Deliberately skipped that coercion by laziness
-
-    let center = self.get(i, j);
-    let min_adjacents = self.get_adjacents(i, j).into_iter().map(|(_, v)| v).min();
+  fn is_minima(&self, ij: (usize, usize)) -> bool {
+    let center = self.get(ij);
+    let min_adjacents = self.get_adjacents(ij).into_iter().map(|(_, v)| v).min();
     
     match (center, min_adjacents) {
       (Some(c), Some(m)) => c < m,
@@ -49,10 +49,61 @@ impl HeightMap {
     self
       .heights
       .indexed_iter()
-      .filter_map( |((i, j), &h)| if self.is_minima(i, j) { Some(h + 1) } else { None } )
+      .filter_map( |(ij, &h)| when!(self.is_minima(ij), h + 1) )
       .collect()
   }
 
+  fn largest_basin_sizes(&self, nth_largest: usize) -> Vec<usize> {
+    self
+      .heights
+      .indexed_iter()
+      .map( |(ij,_)| HeightMap::basin_size( &self.basin(ij) ) )
+      .fold(Vec::<usize>::new(), |mut largest, sz| {
+        largest.push(sz);
+        largest.sort_by(|a, b| b.cmp(a));
+        if largest.len() > nth_largest { largest.pop(); }
+        largest
+      })
+  }
+
+  /// Tailcall exploration. For this one, since both `visited and `to_visit` are mutable structures, I tend to think
+  /// a while loop would have been better, but wanted to explore tailcalls in Rust.
+  /// 
+  /// **OPTME**: accrue the basin size, since this is the goal and we don't really care about visited.
+  #[tailcall]
+  fn basin_impl(hmap: &HeightMap, mut visited: Array2<bool>, mut to_visit: VecDeque<(usize, usize)>) -> Array2<bool> {
+    let already_visited = |ij: (usize, usize)| -> bool { 
+      visited.get(ij).copied().unwrap_or(true) // Out-of-bound is considered already visited
+    };
+
+    match to_visit.pop_front() {
+      None => visited,
+      Some(ij) if already_visited(ij) => basin_impl(hmap, visited, to_visit),
+      Some(ij) => {
+        let center = hmap.get(ij).expect("Unexpected. All indexes at this point should be valid and unvisited");
+        let mut adjacents_to_visit: VecDeque<(usize, usize)> = hmap
+          .get_adjacents(ij)
+          .into_iter()
+          .filter_map(|(ij, v)| when!(center < v && v < 9, ij) ) // SMALL-OPTME: Call already_visited to make less tailcalls.
+          .collect();
+        
+        to_visit.append(&mut adjacents_to_visit);
+        visited[ij] = true;
+
+        basin_impl(hmap, visited, to_visit)
+      }
+    }
+  }
+
+  fn basin(&self, ij: (usize, usize)) -> Array2<bool> {
+    let visited = Array2::<bool>::default(self.heights.dim());
+    let mut to_visit: VecDeque<(usize, usize)> = VecDeque::new();
+    to_visit.push_back(ij);
+    
+    HeightMap::basin_impl(&self, visited, to_visit)
+  }
+
+  fn basin_size(basin: &Array2<bool>) -> usize { basin.iter().copied().map_into::<usize>().sum() }
 }
 
 impl FromStr for HeightMap {
@@ -78,9 +129,10 @@ impl FromStr for HeightMap {
 
 #[cfg(test)]
 mod test {
-  use std::fs;
   use itertools::Itertools;
   use ndarray::array;
+  use ndarray::Array2;
+  use std::fs;
 
   use super::HeightMap;
 
@@ -109,12 +161,12 @@ mod test {
   #[test]
   fn test_is_minima() {
     let height_map = HEIGHT_MAP!();
-    assert!(height_map.is_minima(0, 1));
-    assert!(height_map.is_minima(0, 9));
-    assert!(height_map.is_minima(2, 2));
-    assert!(height_map.is_minima(4, 6));
+    assert!( height_map.is_minima((0, 1)) );
+    assert!( height_map.is_minima((0, 9)) );
+    assert!( height_map.is_minima((2, 2)) );
+    assert!( height_map.is_minima((4, 6)) );
 
-    assert!(! height_map.is_minima(3, 2));
+    assert!( !height_map.is_minima((3, 2)) );
   }
 
   #[test]
@@ -133,4 +185,46 @@ mod test {
     println!("day9 part 1 answer = {}", sum);
     assert_eq!(sum, 494);
   }
+
+  #[test]
+  fn test_basins() {
+    test_basin( (0, 1), vec![(0, 0), (0, 1), (1, 0)] );
+
+    test_basin( (0, 9), vec![
+      (0, 5), (0, 6), (0, 7), (0, 8), (0, 9),
+      (1, 6), (1, 8), (1, 9),
+      (2, 9)
+    ]);  
+
+    test_basin( (2, 2), vec![
+      (1, 2), (1, 3), (1, 4),
+      (2, 1), (2, 2), (2, 3), (2, 4), (2, 5),
+      (3, 0), (3, 1), (3, 2), (3, 3), (3, 4), 
+      (4, 1)
+    ]);  
+
+    test_basin( (4, 6), vec![
+      (2, 7),
+      (3, 6), (3, 7), (3, 8),
+      (4, 5), (4, 6), (4, 7), (4, 8), (4, 9), 
+    ]);  
+  }
+
+  #[test]
+  fn test_largest_basin_sizes() {
+    let height_map = HEIGHT_MAP!();
+    let largest = height_map.largest_basin_sizes(3);
+    assert_eq!(largest, vec![14, 9, 9]);
+  }
+
+  fn test_basin(center: (usize, usize), expected: Vec<(usize, usize)>) {
+    let height_map = HEIGHT_MAP!();
+    let basin = height_map.basin(center);
+
+    let mut expected_basin = Array2::<bool>::default((5, 10));
+    for ij in expected { expected_basin[ij] = true; }
+
+    assert_eq!(basin, expected_basin);
+  }
+
 }

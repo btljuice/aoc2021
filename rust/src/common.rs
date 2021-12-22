@@ -46,3 +46,11 @@ pub(crate) mod math {
         n * (n + 1.into() ) / 2.into()
     }
 }
+
+pub(crate) mod macros {
+    macro_rules! when { ($e:expr, $s:expr) => { 
+        if ($e) { Some($s) } else { None } 
+    } }
+
+    pub(crate) use when;
+}

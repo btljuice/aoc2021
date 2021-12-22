@@ -7,6 +7,7 @@ edition = "2018"
 
 [dependencies]
 itertools = "0.10.1"
-rdxsort = "0.3"
+rdxsort = "0.3.0"
 conv = "0.3.3"
-ndarray = "0.15"
+ndarray = "0.15.4"
+tailcall = "0.1.6"
