@@ -15,6 +15,17 @@ impl HeightMap {
     HeightMap { heights: Array2::from_shape_vec(dim, numbers).expect("Invalid HeightMap Shape ") }
   }
 
+  fn get_adjacents(&self, i: isize, j: isize) -> Vec<((isize, isize), u8)> {
+    let up    = (i - 1, j    );
+    let down  = (i + 1, j    );
+    let left  = (i    , j - 1);
+    let right = (i    , j + 1);
+    [up, down, left, right]
+      .iter()
+      .filter_map(|&(i, j)| self.get(i, j).map( |v| ((i, j), v) )
+      ).collect()
+  } 
+
   fn get(&self, i: isize, j: isize) -> Option<u8> {
       if i < 0 || j < 0 { None }
       else { self.heights.get((i as usize, j as usize)).copied() }
@@ -23,15 +34,11 @@ impl HeightMap {
   fn is_minima(&self, i: usize, j: usize) -> bool {
     let i = i as isize; // Deliberately skipped that coercion by laziness
     let j = j as isize; // Deliberately skipped that coercion by laziness
-    let up    = self.get(i - 1, j    );
-    let down  = self.get(i + 1, j    );
-    let left  = self.get(i    , j - 1);
-    let right = self.get(i    , j + 1);
-    let cen   = self.get(i    , j    );
 
-    let min_adjacents = vec![up ,down, left, right].iter().flatten().min().copied();
+    let center = self.get(i, j);
+    let min_adjacents = self.get_adjacents(i, j).into_iter().map(|(_, v)| v).min();
     
-    match (cen, min_adjacents) {
+    match (center, min_adjacents) {
       (Some(c), Some(m)) => c < m,
       (None, _) => false,
       (_, None) => true,
@@ -42,7 +49,7 @@ impl HeightMap {
     self
       .heights
       .indexed_iter()
-      .filter_map( |((i, j), &h)| if self.is_minima(i, j) { Some(h +1) } else { None } )
+      .filter_map( |((i, j), &h)| if self.is_minima(i, j) { Some(h + 1) } else { None } )
       .collect()
   }
 }
