@@ -213,7 +213,7 @@ mod test {
         let numbers = translate_numbers_from_file("../input/day8.txt");
         let sum: u32 = numbers.sum();
         println!("part 2 answer = {}", sum);
-        assert_eq!(sum, 1084606);
+        assert_eq!(sum, 61229);
     }
 
 }
