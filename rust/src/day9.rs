@@ -21,8 +21,8 @@ impl HeightMap {
   }
 
   fn is_minima(&self, i: usize, j: usize) -> bool {
-    let i = i as isize;
-    let j = j as isize;
+    let i = i as isize; // Deliberately skipped that coercion by laziness
+    let j = j as isize; // Deliberately skipped that coercion by laziness
     let up    = self.get(i - 1, j    );
     let down  = self.get(i + 1, j    );
     let left  = self.get(i    , j - 1);
@@ -38,12 +38,13 @@ impl HeightMap {
     }
   }
 
-  // fn minimas(&self) -> Vec<u8> {
-  //   self
-  //     .heights
-  //     .indexed_iter()
-  //     .map(|((i, j), &h)|
-  // }
+  fn minimas(&self) -> Vec<u8> {
+    self
+      .heights
+      .indexed_iter()
+      .filter_map( |((i, j), &h)| if self.is_minima(i, j) { Some(h +1) } else { None } )
+      .collect()
+  }
 }
 
 impl FromStr for HeightMap {
@@ -105,5 +106,13 @@ mod test {
     assert!(height_map.is_minima(4, 6));
 
     assert!(! height_map.is_minima(3, 2));
+  }
+
+  #[test]
+  fn test_minimas() {
+    let height_map = HEIGHT_MAP!();
+    let mut mins = height_map.minimas();
+    mins.sort();
+    assert_eq!(mins, vec![1, 2, 6, 6])
   }
 }
