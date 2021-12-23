@@ -60,7 +60,8 @@ impl HeightMap {
     self
       .minimas()
       .into_iter()
-      .map(|(ij, _)| self.basin(ij).1 )
+      // .map(|(ij, _)| self.basin_tailrec(ij).1 )
+      .map(|(ij, _)| self.basin_loop(ij) )
       .fold(Vec::<usize>::new(), |mut largest, sz| {
         largest.push(sz);
         largest.sort_by(|a, b| b.cmp(a));
@@ -96,12 +97,38 @@ impl HeightMap {
     }
   }
 
-  fn basin(&self, ij: Index) -> (Array2<bool>, usize) {
+  fn basin_tailrec(&self, ij: Index) -> (Array2<bool>, usize) {
     let visited = Array2::<bool>::default(self.heights.dim());
     let mut to_visit: VecDeque<Index> = VecDeque::new();
     to_visit.push_back(ij);
     
     HeightMap::basin_impl(&self, visited, to_visit, 0)
+  }
+
+  fn basin_loop(&self, root_ij: Index) -> usize {
+    let mut visited = Array2::<bool>::default(self.heights.dim());
+    let mut to_visit: VecDeque<Index> = VecDeque::new();
+    let mut nb_visited: usize = 0;
+
+    to_visit.push_back(root_ij);
+
+    while let Some(ij) = to_visit.pop_front() {
+      let already_visited = visited.get(ij).copied().unwrap_or(true); // out-of-bound is considered already visited
+      if already_visited { continue; }
+
+      let center = self.get(ij).expect("unexpected. all indexes at this point should be valid and unvisited");
+      let mut adjacents_to_visit: VecDeque<Index> = self
+        .get_adjacents(ij)
+        .into_iter()
+        .filter_map(|(ij, v)| when!(center < v && v < 9, ij) ) // small-optme: call already_visited to make less tailcalls.
+          .collect();
+        
+        to_visit.append(&mut adjacents_to_visit);
+        visited[ij] = true;
+        nb_visited += 1;
+    }
+    
+    nb_visited
   }
 
   fn basin_size(basin: &Array2<bool>) -> usize { basin.iter().copied().map_into::<usize>().sum() }
@@ -230,7 +257,7 @@ use super::Index;
 
   fn test_basin(center: Index, expected: Vec<Index>) {
     let height_map = HEIGHT_MAP!();
-    let (basin, _) = height_map.basin(center);
+    let (basin, _) = height_map.basin_tailrec(center);
 
     let mut expected_basin = Array2::<bool>::default((5, 10));
     for ij in expected { expected_basin[ij] = true; }
