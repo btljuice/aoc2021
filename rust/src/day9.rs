@@ -31,7 +31,7 @@ impl HeightMap {
     [up, down, left, right]
       .into_iter()
       .flatten()
-      .filter_map(|&ij| self.get(ij).map(|v| (ij, v))
+      .filter_map(|ij| self.get(ij).map(|v| (ij, v))
       ).collect()
   } 
 
