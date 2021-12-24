@@ -13,16 +13,27 @@ use ndarray::{Array2, s, iter::IndexedIterMut, ArrayViewMut2, Dim, SliceInfo, Sl
 // impl<T> RichArray for Array2<T>  {
 // }
 
-fn get_adjacents(array: &mut Array2<u8>, (i, j): (usize, usize)) -> impl Iterator<Item=(usize, usize)> {
-    let (nb_rows, nb_cols) = array.dim();
-    let up    = if i > 0            { i - 1 } else { 0 };
-    let down  = if i < nb_rows - 1  { i + 1 } else { i };
-    let left  = if j > 0            { j - 1 } else { 0 };
-    let right = if j < nb_cols - 1  { j + 1 } else { j };
-
-  (up..=down).cartesian_product(left..=right)
+trait Adjacents {
+  type Index;
+  /// **ANSME**: 
+  ///   - How return a generic Iterator (e.g. impl Iterator<Item=Index>)
+  ///   - How return a generic Iterator w/ references or mutable references (e.g. impl Iterator<Item=&mut T>)
+  fn get_adjacents(&self, i: Self::Index) -> Vec<Self::Index>;
 }
 
+impl Adjacents for Array2<u8> {
+    type Index = (usize, usize);
+
+    fn get_adjacents(&self, (i, j): Self::Index) -> Vec<Self::Index> {
+      let (nb_rows, nb_cols) = self.dim();
+      let up    = if i > 0            { i - 1 } else { 0 };
+      let down  = if i < nb_rows - 1  { i + 1 } else { i };
+      let left  = if j > 0            { j - 1 } else { 0 };
+      let right = if j < nb_cols - 1  { j + 1 } else { j };
+
+      (up..=down).cartesian_product(left..=right).collect()
+    }
+}
 
 fn step(energies: &mut Array2<u8>) {
   type Index = (usize, usize);
@@ -40,8 +51,7 @@ fn step(energies: &mut Array2<u8>) {
     let center = energies[ij];
     // println!("Visiting {:?} w/ value {}", ij, center);
     debug_assert_eq!(center, 0, "Visit only lighten octopuses");
-    let adjacents = get_adjacents(energies, ij);
-    for ij in adjacents {
+    for ij in energies.get_adjacents(ij) {
       let e = energies.get_mut(ij).unwrap();
       if *e > 0 {
         *e = (*e + 1) % 10;
