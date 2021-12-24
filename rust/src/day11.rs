@@ -146,5 +146,45 @@ mod test {
 
     assert_eq!(energies, expected100);
     assert_eq!(nb_lightened, 1656);
+
+    // Test all flash
+    let mut nb_steps: usize = 100;
+    loop {
+      nb_steps += 1;
+      step(&mut energies);
+      if energies.iter().all(|&e| e == 0) { break; }
+    }
+
+    assert_eq!(nb_steps, 195);
+  }
+
+  #[test]
+  fn part1_and_2() {
+
+    let mut energies: Array2<u8> = array![ 
+      [ 5,4,2,1,4,5,1,7,4,1 ],
+      [ 3,8,7,7,3,2,1,5,6,8 ],
+      [ 7,5,8,3,2,7,3,8,6,4 ],
+      [ 3,4,5,1,7,1,7,7,7,8 ],
+      [ 2,6,5,1,6,1,5,1,5,6 ],
+      [ 6,3,7,7,1,6,7,5,2,6 ],
+      [ 5,1,8,2,8,5,2,8,3,1 ],
+      [ 4,7,6,6,8,5,6,6,7,6 ],
+      [ 3,4,3,7,1,8,7,5,8,3 ],
+      [ 3,6,3,3,3,7,1,5,8,6 ],
+    ]; 
+    let nb_lightened: usize = (1..=100).into_iter().map(|_| step(&mut energies)).sum();
+    println!("day11 part 1 answer= {}", nb_lightened);
+    assert_eq!(nb_lightened, 1673);
+
+    // Test all flash
+    let mut nb_steps: usize = 100;
+    loop {
+      nb_steps += 1;
+      step(&mut energies);
+      if energies.iter().all(|&e| e == 0) { break; }
+    }
+
+    println!("day11 part 2 answer= {}", nb_steps);
   }
 }
