@@ -31,16 +31,17 @@ fn step(energies: &mut Array2<u8>) -> usize {
   let mut to_visit: VecDeque<Index> = VecDeque::new();
   let mut nb_lightened: usize = 0;
 
-  let mut increase_energy = |ij: (usize, usize), e: &mut u8| {
-    *e = (*e + 1) % 10;
-    if *e == 0 { 
-      nb_lightened += 1;
-      to_visit.push_back(ij); 
-    }
-  };
+  // INFO: Started w/ a closure, but rust prevents borrowing a mutable reference twice (on to_visit)
+  macro_rules! increase_energy { ($ij:ident, $e:ident) => { { 
+      *$e = (*$e + 1) % 10;
+      if *$e == 0 { 
+        nb_lightened += 1;
+        to_visit.push_back($ij); 
+      }
+  } } }
 
   // 1. increase energy by 1 for all
-  for (ij, e) in energies.indexed_iter_mut() { increase_energy(ij, e); }
+  for (ij, e) in energies.indexed_iter_mut() { increase_energy!(ij, e); }
   // println!("to_visit: {:?}", to_visit);
   // println!("After Increase\n{:?}", energies);
 
@@ -50,7 +51,7 @@ fn step(energies: &mut Array2<u8>) -> usize {
     debug_assert_eq!(center, 0, "Visit only lighten octopuses");
     for ij in energies.get_adjacents(ij) {
       let e = energies.get_mut(ij).unwrap();
-      if *e > 0 { increase_energy(ij, e) }
+      if *e > 0 { increase_energy!(ij, e) }
     }
   }
 
