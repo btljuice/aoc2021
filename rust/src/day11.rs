@@ -29,13 +29,13 @@ impl Adjacents for Array2<u8> {
 fn step(energies: &mut Array2<u8>) -> usize {
   type Index = (usize, usize);
   let mut to_visit: VecDeque<Index> = VecDeque::new();
-  let mut nb_ligthened: usize = 0;
+  let mut nb_lightened: usize = 0;
 
   // 1. increase energy by 1 for all
   for (ij, e) in energies.indexed_iter_mut() {
     *e = (*e + 1) % 10;
     if *e == 0 { 
-      nb_ligthened += 1;
+      nb_lightened += 1;
       to_visit.push_back(ij); 
     }
   }
@@ -51,7 +51,7 @@ fn step(energies: &mut Array2<u8>) -> usize {
       if *e > 0 {
         *e = (*e + 1) % 10;
         if *e == 0 { 
-          nb_ligthened += 1;
+          nb_lightened += 1;
           to_visit.push_back(ij) 
         }
       }
@@ -61,7 +61,7 @@ fn step(energies: &mut Array2<u8>) -> usize {
   // println!("to_visit: {:?}", to_visit);
   // println!("visited {:?} w/ value {}\n{:?}", ij, center, energies);
 
-  nb_ligthened
+  nb_lightened
 }
 
 
