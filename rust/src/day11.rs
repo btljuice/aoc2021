@@ -3,16 +3,6 @@ use std::collections::VecDeque;
 use itertools::Itertools;
 use ndarray::{Array2, s, iter::IndexedIterMut, ArrayViewMut2, Dim, SliceInfo, SliceInfoElem};
 
-
-// trait RichArray {
-//   type Index;
-//   type Value;
-//   fn get_adjacents_mut<'a>(&'a mut self, ij: Self::Index) -> impl Iterator<Item=(Self::Index, &'a mut Self::Value)>;
-//   fn get(&self, i: Self::Index) -> Option<Self::Value>;
-// }
-// impl<T> RichArray for Array2<T>  {
-// }
-
 trait Adjacents {
   type Index;
   /// **ANSME**: 
