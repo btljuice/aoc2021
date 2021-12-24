@@ -35,14 +35,19 @@ impl Adjacents for Array2<u8> {
     }
 }
 
-fn step(energies: &mut Array2<u8>) {
+/// **returns**: number of lighten octopuses
+fn step(energies: &mut Array2<u8>) -> usize {
   type Index = (usize, usize);
   let mut to_visit: VecDeque<Index> = VecDeque::new();
+  let mut nb_ligthened: usize = 0;
 
   // 1. increase energy by 1 for all
   for (ij, e) in energies.indexed_iter_mut() {
     *e = (*e + 1) % 10;
-    if *e == 0 { to_visit.push_back(ij); }
+    if *e == 0 { 
+      nb_ligthened += 1;
+      to_visit.push_back(ij); 
+    }
   }
   // println!("to_visit: {:?}", to_visit);
   // println!("After Increase\n{:?}", energies);
@@ -55,13 +60,18 @@ fn step(energies: &mut Array2<u8>) {
       let e = energies.get_mut(ij).unwrap();
       if *e > 0 {
         *e = (*e + 1) % 10;
-        if *e == 0 { to_visit.push_back(ij) }
+        if *e == 0 { 
+          nb_ligthened += 1;
+          to_visit.push_back(ij) 
+        }
       }
     }
-
-    // println!("to_visit: {:?}", to_visit);
-    // println!("visited {:?} w/ value {}\n{:?}", ij, center, energies);
   }
+
+  // println!("to_visit: {:?}", to_visit);
+  // println!("visited {:?} w/ value {}\n{:?}", ij, center, energies);
+
+  nb_ligthened
 }
 
 
@@ -132,8 +142,9 @@ mod test {
       [ 6,7,8,9,9,9,8,7,6,6 ],
     ];
 
-    for _ in 1..=100 { step(&mut energies); }
+    let nb_lightened: usize = (1..=100).into_iter().map(|_| step(&mut energies)).sum();
 
     assert_eq!(energies, expected100);
+    assert_eq!(nb_lightened, 1656);
   }
 }
