@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use itertools::Itertools;
+use itertools::{Itertools, iproduct};
 use ndarray::{Array2, s, iter::IndexedIterMut, ArrayViewMut2, Dim, SliceInfo, SliceInfoElem};
 
 trait Adjacents {
@@ -21,7 +21,7 @@ impl Adjacents for Array2<u8> {
       let left  = if j > 0            { j - 1 } else { 0 };
       let right = if j < nb_cols - 1  { j + 1 } else { j };
 
-      (up..=down).cartesian_product(left..=right).collect()
+      iproduct!(up..=down, left..=right).collect()
     }
 }
 
