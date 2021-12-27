@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
-use itertools::{Itertools, iproduct};
-use ndarray::{Array2, s, iter::IndexedIterMut, ArrayViewMut2, Dim, SliceInfo, SliceInfoElem};
+use itertools::iproduct;
+use ndarray::Array2;
 
 trait Adjacents {
   type Index;

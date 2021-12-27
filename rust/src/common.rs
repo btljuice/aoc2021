@@ -7,8 +7,8 @@ pub(crate) mod parse {
     use std::fs;
 
     /** @todo convert return type to Result<impl Iterator<Item=String>, {Error}> on first error */
-    pub fn read_lines(filename: &str) -> impl Iterator<Item=String> {
-        let file = File::open(filename).unwrap();
+    pub fn read_lines(path: impl AsRef<Path>) -> impl Iterator<Item=String> {
+        let file = File::open(path).unwrap();
         io::BufReader::new(file).lines().map(|r| r.unwrap())
     }
 

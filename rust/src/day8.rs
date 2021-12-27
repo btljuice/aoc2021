@@ -1,5 +1,6 @@
-use std::{collections::HashMap, convert::TryInto};
+use std::{collections::HashMap, convert::TryInto, path::Path};
 use itertools::Itertools;
+use std::convert::AsRef;
 
 use super::common;
 
@@ -124,9 +125,8 @@ fn parse_digit(s: &str) -> Digit {
     }).collect_vec()
 }
 
-fn translate_digits_from_file(filename: &str) -> impl Iterator<Item=Vec<u8>> {
-    let lines = common::parse::read_lines(filename);
-    lines
+fn translate_digits_from_file(filename: impl AsRef<Path>) -> impl Iterator<Item=Vec<u8>> {
+    common::parse::read_lines(filename)
       .enumerate()
       .map( |(i, l)| {
         let (s0, s1) = l.split_once('|').expect(format!("Unable to find | on line {}", i).as_str());
@@ -137,7 +137,7 @@ fn translate_digits_from_file(filename: &str) -> impl Iterator<Item=Vec<u8>> {
       })
 }
 
-fn translate_numbers_from_file(filename: &str) -> impl Iterator<Item=u32> {
+fn translate_numbers_from_file(filename: impl AsRef<Path>) -> impl Iterator<Item=u32> {
     let numbers = translate_digits_from_file(filename);
     numbers.map(|digits| digits.iter().fold(0u32, |acc, &d| acc*10 + u32::from(d)))
 }
