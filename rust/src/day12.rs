@@ -1,3 +1,4 @@
+use std::array::IntoIter;
 use std::cmp::Ordering;
 use std::collections::{HashSet, HashMap};
 use std::convert::Infallible;
@@ -29,6 +30,25 @@ impl Node {
 trait KeyTraits: Hash + Eq + Debug {}
 impl<K> KeyTraits for K where K: Hash + Eq + Debug {}
 
+
+enum Tree<N: Copy> {
+  Leaf(N),
+  Branch(N, Vec<Tree<N>>),
+}
+
+impl<N: Copy> Tree<N> {
+  fn paths(&self) -> Vec<Vec<N>> {
+    match self {
+      Tree::Leaf(n) => vec![vec![*n]],
+      Tree::Branch(n, branches) => 
+        branches.iter()
+          .flat_map(|b| b.paths())
+          .map(|mut p| { p.insert(0, *n); p })
+          .collect_vec()
+    }
+  }
+}
+
 /// **todo**: Look for a well established graph library 
 #[derive(Debug, PartialEq, Eq)]
 struct BiGraph { edges_map: HashMap<Node, Vec<Node>> }
@@ -37,6 +57,15 @@ impl BiGraph {
   fn new(edges: Vec<(Node, Node)>) -> Self {
     Self::validate(&edges);
     BiGraph { edges_map: Self::bidirectional_edges_map(edges) }
+  }
+
+  fn from_str(lines: &'static str) -> Self {
+    lines.split('\n').map(|l| {
+      let (a, b) = l.trim().split_once('-').expect("Unable to find -");
+      let a = Node::from_str(a);
+      let b = Node::from_str(b);
+      (a, b)
+    }).collect::<BiGraph>()
   }
 
   /// Validates that there's no `BigCave` <-> `BigCage` edge, otherwise exhaustive path traversal will loop infinitely.
@@ -49,7 +78,7 @@ impl BiGraph {
     }
   }
 
-  fn nodes<'a> (&'a self) -> impl Iterator<Item= &'a Node> {
+  fn nodes<'a>(&'a self) -> impl Iterator<Item= &'a Node> {
     self.edges_map
       .iter()
       .flat_map( |(k, vs)| std::iter::once(k).chain(vs) )
@@ -57,38 +86,40 @@ impl BiGraph {
       .dedup()
   }
 
-  fn bidirectional_edges<'a>(edges: &'a Vec<(Node, Node)>) -> impl Iterator<Item=(&'a Node, &'a Node)> {
-    edges.iter().flat_map( |(a, b)| [(a, b), (b, a)] )
+  fn neighbors<'a>(&'a self, from: &Node) -> impl Iterator<Item= &'a Node> {
+    self.edges_map .get(&from).into_iter().flat_map(|v| v.iter())
+  }
+
+  fn bidirectional_edges(edges: Vec<(Node, Node)>) -> impl Iterator<Item=(Node, Node)> {
+    edges.into_iter().flat_map( |(a, b)| [(a, b), (b, a)] )
   }
 
   fn bidirectional_edges_map(edges: Vec<(Node, Node)>) -> HashMap<Node, Vec<Node>> {
-    Self::bidirectional_edges(&edges)
-      .map(|(&a, &b)| (a, b))
+    Self::bidirectional_edges(edges)
       .into_grouping_map()
-      .fold(Vec::<Node>::new(), |mut acc, _k, v| { if !acc.contains(&v) { acc.push(v); }; acc } )
+      .fold(Vec::<Node>::new(), |mut acc, _k, v| { if ! acc.contains(&v) { acc.push(v); }; acc } )
   }
 
-  fn from_str(lines: &'static str) -> Self {
-    lines.split('\n').map(|l| {
-      let (a, b) = l.trim().split_once('-').expect("Unable to find -");
-      let a = Node::from_str(a);
-      let b = Node::from_str(b);
-      (a, b)
-    }).collect::<BiGraph>()
-  }
+  fn traverse_all(&self) -> Tree<Node> { self.traverse(Node::Start, [Node::Start].into()) }
 
+  /// **todo**: Add caching OR dynamic programming from End to Start
+  /// **unvisited**: Should only contain SmallCaves
+  fn traverse(& self, from: Node, visited: HashSet<Node>) -> Tree<Node> {
+    if matches!(from, Node::End) { return Tree::Leaf(from) }
 
-  // fn traverse_all(&'a self) -> Vec<Vec<&'a Node>> {
-  //   self.validate();
-  //   self.traverse(& Node::Start)
-  // }
-  // /// **todo**: Add caching OR dynamic programming from End to Start
-  // fn traverse<'a>(&'a self, root: &'a Node) -> Vec<Vec<&'a Node>> {
-  //   if matches!(root, End) { return Vec::new() }
+    let visited_with = |n: Node| {
+      let mut v = visited.clone();
+      if matches!(n, Node::SmallCave(_)) { v.insert(n); }
+      v
+    };
 
-  //   let edges_map: HashMap<_, _> = self.bidirectional_edges_map();
-  //   todo!()
-  // }
+    let branches = self .neighbors(&from)
+      .filter(|n| ! visited.contains(n) && ! matches!(n, Node::Start) ) // Don't want to circle back to Start, nor a visited small cave
+      .map(|&n| self.traverse(n, visited_with(n)) )
+      .collect_vec();
+
+    Tree::Branch(from, branches)
+   }
 }
 
 impl FromIterator<(Node, Node)> for BiGraph {
@@ -112,6 +143,38 @@ b-d
 A-end
 b-end";
 
+const SAMPLE_GRAPH2: &str = 
+"dc-end
+HN-start
+start-kj
+dc-start
+dc-HN
+LN-dc
+HN-end
+kj-sa
+kj-HN
+kj-dc";
+
+const SAMPLE_GRAPH3: &str =
+"fs-end
+he-DX
+fs-he
+start-DX
+pj-DX
+end-zg
+zg-sl
+zg-pj
+pj-he
+RW-he
+fs-DX
+pj-RW
+zg-RW
+start-pj
+he-WI
+zg-he
+pj-fs
+start-RW";
+
   #[test]
   fn test_parse_graph() {
     let bi_graph: BiGraph = BiGraph::from_str(SAMPLE_GRAPH);
@@ -119,6 +182,7 @@ b-end";
       .map( |(k, mut vs)| { vs.sort(); (k, vs) } )
       .sorted()
       .collect_vec();
+
     let expected: Vec<(Node, Vec<Node>)> = vec![
       ( Start,          vec![ SmallCave("b"), BigCave("A") ] ),
       ( SmallCave("b"), vec![ Start, SmallCave("d"), BigCave("A"), End ] ),
@@ -129,6 +193,73 @@ b-end";
     ];
 
     assert_eq!(assoc_list, expected);
-    
+  }
+
+  #[test]
+  fn tests_traverse_all() {
+    let bi_graph = BiGraph::from_str(SAMPLE_GRAPH);
+    let all_paths = bi_graph.traverse_all().paths();
+    let expected = vec![
+      vec![Start, BigCave("A"), SmallCave("c"), BigCave("A"), SmallCave("b"), BigCave("A"), End],
+      vec![Start, BigCave("A"), SmallCave("c"), BigCave("A"), SmallCave("b"), End],
+      vec![Start, BigCave("A"), SmallCave("c"), BigCave("A"), End],
+      vec![Start, BigCave("A"), SmallCave("b"), BigCave("A"), SmallCave("c"), BigCave("A"), End],
+      vec![Start, BigCave("A"), SmallCave("b"), BigCave("A"), End],
+      vec![Start, BigCave("A"), SmallCave("b"), End],
+      vec![Start, BigCave("A"), End],
+      vec![Start, SmallCave("b"), BigCave("A"), SmallCave("c"), BigCave("A"), End],
+      vec![Start, SmallCave("b"), BigCave("A"), End],
+      vec![Start, SmallCave("b"), End],
+    ];
+    assert_eq!(all_paths, expected);
+  }
+
+  #[test]
+  fn tests_traverse_all_2() {
+    let bi_graph = BiGraph::from_str(SAMPLE_GRAPH2);
+    let all_paths = bi_graph.traverse_all().paths();
+    assert_eq!(all_paths.len(), 19);
+  }
+
+  #[test]
+  fn tests_traverse_all_3() {
+    let bi_graph = BiGraph::from_str(SAMPLE_GRAPH3);
+    let all_paths = bi_graph.traverse_all().paths();
+    assert_eq!(all_paths.len(), 226);
+  }
+
+  const INPUT: &str =
+"kc-qy
+qy-FN
+kc-ZP
+end-FN
+li-ZP
+yc-start
+end-qy
+yc-ZP
+wx-ZP
+qy-li
+yc-li
+yc-wx
+kc-FN
+FN-li
+li-wx
+kc-wx
+ZP-start
+li-kc
+qy-nv
+ZP-qy
+nv-xr
+wx-start
+end-nv
+kc-nv
+nv-XQ";
+
+  #[test]
+  fn part1() {
+    let bi_graph = BiGraph::from_str(INPUT);
+    let paths = bi_graph.traverse_all().paths();
+    println!("day12 part 1 answer = {}", paths.len());
+    assert_eq!(paths.len(), 5874);
   }
 }
