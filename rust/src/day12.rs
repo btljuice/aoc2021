@@ -100,11 +100,11 @@ impl BiGraph {
       .fold(Vec::<Node>::new(), |mut acc, _k, v| { if ! acc.contains(&v) { acc.push(v); }; acc } )
   }
 
-  fn traverse_all(&self) -> Tree<Node> { self.traverse(Node::Start, [Node::Start].into()) }
+  fn traverse_all(&self, can_visit_twice: bool) -> Tree<Node> { self.traverse(Node::Start, [Node::Start].into(), can_visit_twice) }
 
   /// **todo**: Add caching OR dynamic programming from End to Start
   /// **unvisited**: Should only contain SmallCaves
-  fn traverse(& self, from: Node, visited: HashSet<Node>) -> Tree<Node> {
+  fn traverse(& self, from: Node, visited: HashSet<Node>, can_visit_twice: bool) -> Tree<Node> {
     if matches!(from, Node::End) { return Tree::Leaf(from) }
 
     let visited_with = |n: Node| {
@@ -114,8 +114,9 @@ impl BiGraph {
     };
 
     let branches = self .neighbors(&from)
-      .filter(|n| ! visited.contains(n) && ! matches!(n, Node::Start) ) // Don't want to circle back to Start, nor a visited small cave
-      .map(|&n| self.traverse(n, visited_with(n)) )
+      .filter(|n| ! matches!(n, Node::Start) ) // Don't want to circle back to Start
+      .filter(|n| can_visit_twice || ! visited.contains(n) )
+      .map(|&n| self.traverse(n, visited_with(n), can_visit_twice && ! visited.contains(&n) ) )
       .collect_vec();
 
     Tree::Branch(from, branches)
@@ -134,16 +135,15 @@ mod test {
   use super::*;
   use super::Node::*;
 
-  const SAMPLE_GRAPH: &str =
+  const SAMPLE_GRAPHS: [&str; 3] = [
 "start-A
 start-b
 A-c
 A-b
 b-d
 A-end
-b-end";
+b-end",
 
-const SAMPLE_GRAPH2: &str = 
 "dc-end
 HN-start
 start-kj
@@ -153,9 +153,8 @@ LN-dc
 HN-end
 kj-sa
 kj-HN
-kj-dc";
+kj-dc",
 
-const SAMPLE_GRAPH3: &str =
 "fs-end
 he-DX
 fs-he
@@ -173,11 +172,12 @@ start-pj
 he-WI
 zg-he
 pj-fs
-start-RW";
+start-RW",
+  ];
 
   #[test]
   fn test_parse_graph() {
-    let bi_graph: BiGraph = BiGraph::from_str(SAMPLE_GRAPH);
+    let bi_graph: BiGraph = BiGraph::from_str(SAMPLE_GRAPHS[0]);
     let assoc_list: Vec<(Node, Vec<Node>)> = bi_graph.edges_map.into_iter()
       .map( |(k, mut vs)| { vs.sort(); (k, vs) } )
       .sorted()
@@ -197,8 +197,8 @@ start-RW";
 
   #[test]
   fn tests_traverse_all() {
-    let bi_graph = BiGraph::from_str(SAMPLE_GRAPH);
-    let all_paths = bi_graph.traverse_all().paths();
+    let bi_graph = BiGraph::from_str(SAMPLE_GRAPHS[0]);
+    let all_paths = bi_graph.traverse_all(false).paths();
     let expected = vec![
       vec![Start, BigCave("A"), SmallCave("c"), BigCave("A"), SmallCave("b"), BigCave("A"), End],
       vec![Start, BigCave("A"), SmallCave("c"), BigCave("A"), SmallCave("b"), End],
@@ -215,17 +215,16 @@ start-RW";
   }
 
   #[test]
-  fn tests_traverse_all_2() {
-    let bi_graph = BiGraph::from_str(SAMPLE_GRAPH2);
-    let all_paths = bi_graph.traverse_all().paths();
-    assert_eq!(all_paths.len(), 19);
-  }
+  fn tests_traverse_all_lens() {
+    const expected: [[usize; 3]; 2] = [ [10, 19, 226], [36, 103, 3509]];
 
-  #[test]
-  fn tests_traverse_all_3() {
-    let bi_graph = BiGraph::from_str(SAMPLE_GRAPH3);
-    let all_paths = bi_graph.traverse_all().paths();
-    assert_eq!(all_paths.len(), 226);
+    for (i, &can_visit_twice) in [false, true].iter().enumerate() {
+      for j in 0..3 {
+        let bi_graph = BiGraph::from_str(SAMPLE_GRAPHS[j]);
+        let all_paths = bi_graph.traverse_all(can_visit_twice).paths();
+        assert_eq!(all_paths.len(), expected[i][j]);
+      }
+    }
   }
 
   const INPUT: &str =
@@ -258,8 +257,15 @@ nv-XQ";
   #[test]
   fn part1() {
     let bi_graph = BiGraph::from_str(INPUT);
-    let paths = bi_graph.traverse_all().paths();
+    let paths = bi_graph.traverse_all(false).paths();
     println!("day12 part 1 answer = {}", paths.len());
     assert_eq!(paths.len(), 5874);
+  }
+  #[test]
+  fn part2() {
+    let bi_graph = BiGraph::from_str(INPUT);
+    let paths = bi_graph.traverse_all(true).paths();
+    println!("day12 part 2 answer = {}", paths.len());
+    assert_eq!(paths.len(), 153592);
   }
 }
