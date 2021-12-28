@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use lazy_regex::regex_captures;
+use shrinkwraprs::Shrinkwrap;
 
 use crate::common;
 
@@ -26,6 +27,22 @@ impl Inputs {
       });
 
     Inputs { polymer, insertion_rules }
+  }
+}
+
+#[derive(Shrinkwrap)]
+struct Rules(HashMap<(char, char), char>);
+impl Rules {
+  fn pair_insertion(&self, polymer: String) -> String {
+    polymer.chars().fold(String::new(), |mut acc, b| {
+      if let Some(a) = acc.chars().last() {
+        if let Some(&c) = self.get(&(a, b)) {
+          acc.push(c);
+        }
+      }
+      acc.push(b);
+      acc
+    })
   }
 }
 
@@ -61,4 +78,24 @@ use super::*;
     assert_eq!(polymer, "NNCB");
     assert_eq!(insertion_rules, expected_rules);
   }
+
+  #[test]
+  fn test_pair_insertion() {
+    let Inputs { polymer, insertion_rules } = Inputs::from_file("../input/day14_sample.txt");
+    let insertion_rules = Rules(insertion_rules);
+
+    let polymer = insertion_rules.pair_insertion(polymer);
+    assert_eq!(polymer, "NCNBCHB");
+
+    let polymer = insertion_rules.pair_insertion(polymer);
+    assert_eq!(polymer, "NBCCNBBBCBHCB");
+
+    let polymer = insertion_rules.pair_insertion(polymer);
+    assert_eq!(polymer, "NBBBCNCCNBBNBNBBCHBHHBCHB");
+
+    let polymer = insertion_rules.pair_insertion(polymer);
+    assert_eq!(polymer, "NBBNBNBBCCNBCNCCNBBNBBNBBBNBBNBBCBHCBHHNHCBBCBHCB");
+  }
+
+
 }
