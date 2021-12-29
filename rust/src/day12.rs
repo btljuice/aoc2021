@@ -65,7 +65,7 @@ impl BiGraph {
   }
 
   /// Validates that there's no `BigCave` <-> `BigCage` edge, otherwise exhaustive path traversal will loop infinitely.
-  fn validate(edges: &Vec<(Node, Node)>) {
+  fn validate(edges: &[(Node, Node)]) {
     for e in edges {
       assert!(
         ! matches!(e, (Node::BigCave(_), Node::BigCave(_))),
@@ -75,7 +75,7 @@ impl BiGraph {
   }
 
   #[allow(dead_code)]
-  fn nodes<'a>(&'a self) -> impl Iterator<Item= &'a Node> {
+  fn nodes(&self) -> impl Iterator<Item= &Node> {
     self.edges_map
       .iter()
       .flat_map( |(k, vs)| std::iter::once(k).chain(vs) )
@@ -84,7 +84,7 @@ impl BiGraph {
   }
 
   fn neighbors<'a>(&'a self, from: &Node) -> impl Iterator<Item= &'a Node> {
-    self.edges_map .get(&from).into_iter().flat_map(|v| v.iter())
+    self.edges_map .get(from).into_iter().flat_map(|v| v.iter())
   }
 
   fn bidirectional_edges(edges: Vec<(Node, Node)>) -> impl Iterator<Item=(Node, Node)> {

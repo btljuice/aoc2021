@@ -91,7 +91,7 @@ pub(self) mod bingo {
     }
 
     pub fn first_winner<'a, 'b>(draw: &'b Draw, cards: &'a[Card]) -> Option<(Number, PunchCard<'a>)> {
-        let mut punch_cards: Vec<PunchCard> = cards.iter().map(|c| PunchCard::new(c)).collect();
+        let mut punch_cards: Vec<PunchCard> = cards.iter().map(PunchCard::new).collect();
 
         for &n in draw {
             for punch_card in &mut punch_cards { punch_card.punch(n); }
@@ -110,7 +110,7 @@ pub(self) mod bingo {
     }
 
     pub fn last_winner<'a, 'b>(draw: &'b Draw, cards: &'a[Card]) -> Option<(Number, PunchCard<'a>)> {
-        let mut punch_cards: Vec<PunchCard> = cards.iter().map(|c| PunchCard::new(c)).collect();
+        let mut punch_cards: Vec<PunchCard> = cards.iter().map(PunchCard::new).collect();
 
         for &n in draw {
             for punch_card in &mut punch_cards { punch_card.punch(n); }

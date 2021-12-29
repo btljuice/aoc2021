@@ -25,9 +25,9 @@ mod direction {
     /** @todo Return a Result<...> instead */
     fn ctor(label: &str) -> fn(i32) -> Direction {
         match label.to_lowercase().as_str() {
-            "forward" => |x| Direction::Forward(x),
-            "down" => |y| Direction::Down(y),
-            "up" => |y| Direction::Up(y),
+            "forward" => Direction::Forward,
+            "down" => Direction::Down,
+            "up" => Direction::Up,
             _ => panic!("Unexpected label. Should be forward|down|up"),
         }
     }

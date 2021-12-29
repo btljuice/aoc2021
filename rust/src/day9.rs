@@ -103,7 +103,7 @@ impl HeightMap {
     let mut to_visit: VecDeque<Index> = VecDeque::new();
     to_visit.push_back(ij);
     
-    HeightMap::basin_impl(&self, visited, to_visit, 0)
+    HeightMap::basin_impl(self, visited, to_visit, 0)
   }
 
   fn basin_loop(&self, root_ij: Index) -> usize {

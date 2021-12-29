@@ -54,7 +54,7 @@ type Rosetta = [Signal; 7];
 /// - Flagging / discovering leds could be done w/ & | bit-wise operators
 /// 
 fn signal_rosetta(ten_digits: &[Digit; 10]) -> Rosetta {
-    let led_freqs: HashMap<Signal, u64> = common::collections::freq_count(ten_digits.iter().flatten().map(|&s| s));
+    let led_freqs: HashMap<Signal, u64> = common::collections::freq_count(ten_digits.iter().flatten().copied());
 
     // Exploratory choice of the moment: Prefer a closure over a macro, to minimize macro usages. 
     // - Don't know what is the idiomatic way in Rust. Should I prefer a macro or clojure in general for readability
@@ -133,7 +133,7 @@ fn translate_digits_from_file(filename: impl AsRef<Path>) -> impl Iterator<Item=
         let ten_digits: [Digit; 10] = s0.split_whitespace().map(parse_digit).collect_vec().try_into().unwrap();
         let rosetta: Rosetta = signal_rosetta(&ten_digits);
         let digits: Vec<Digit> = s1.split_whitespace().map(parse_digit).collect_vec();
-        digits.iter().map(|d| translate_digit(&d, &rosetta)).collect_vec()
+        digits.iter().map(|d| translate_digit(d, &rosetta)).collect_vec()
       })
 }
 
