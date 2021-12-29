@@ -16,6 +16,7 @@ type Index = (usize, usize);
 
 
 impl HeightMap {
+  #[allow(dead_code)]
   fn zeros(rows: usize, columns: usize) -> HeightMap { 
     HeightMap { heights: Array2::zeros((rows, columns)) }
   }
@@ -131,6 +132,7 @@ impl HeightMap {
     nb_visited
   }
 
+  #[allow(dead_code)]
   fn basin_size(basin: &Array2<bool>) -> usize { basin.iter().copied().map_into::<usize>().sum() }
 }
 

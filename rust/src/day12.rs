@@ -74,6 +74,7 @@ impl BiGraph {
     }
   }
 
+  #[allow(dead_code)]
   fn nodes<'a>(&'a self) -> impl Iterator<Item= &'a Node> {
     self.edges_map
       .iter()
@@ -212,13 +213,13 @@ start-RW",
 
   #[test]
   fn tests_traverse_all_lens() {
-    const expected: [[usize; 3]; 2] = [ [10, 19, 226], [36, 103, 3509]];
+    const EXPECTED: [[usize; 3]; 2] = [ [10, 19, 226], [36, 103, 3509]];
 
     for (i, &can_visit_twice) in [false, true].iter().enumerate() {
       for j in 0..3 {
         let bi_graph = BiGraph::from_str(SAMPLE_GRAPHS[j]);
         let all_paths = bi_graph.traverse_all(can_visit_twice).paths();
-        assert_eq!(all_paths.len(), expected[i][j]);
+        assert_eq!(all_paths.len(), EXPECTED[i][j]);
       }
     }
   }

@@ -1,4 +1,3 @@
-use std::convert::identity;
 use std::collections::HashMap;
 use std::path::Path;
 use itertools::MinMaxResult;
@@ -180,7 +179,7 @@ use super::*;
 
   #[test]
   fn part2() {
-    let Inputs { mut polymer, insertion_rules } = Inputs::from_file("../input/day14.txt");
+    let Inputs { polymer, insertion_rules } = Inputs::from_file("../input/day14.txt");
     let count = insertion_rules.expand_polymer(polymer, 40);
 
     if let MinMaxResult::MinMax((_, min), (_, max)) = minmax(&count) {

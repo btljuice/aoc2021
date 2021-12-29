@@ -86,7 +86,7 @@ impl Display for Dots {
           let c: char = if dots.contains(&Pos(i,j)) { '#'} else { ' ' };
           write!(f, "{}", c)?;
         }
-        write!(f, "{}", '\n');
+        write!(f, "{}", '\n')?;
       }
       Ok(())
     }

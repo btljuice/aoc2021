@@ -64,7 +64,9 @@ pub(self) fn min_displace_part2(crabs: &mut Crabs) -> u32 {
   crabs.sorted();
 
   let n: f64 = crabs.positions.len() as f64;
+  #[allow(non_snake_case)]
   let P: f64 = crabs.positions.iter().map(|&p| f64::from(p)).sum();
+  #[allow(non_snake_case)]
   let C: f64 = P + 0.5*n;
 
   let d_cost = |x: PosType, i: usize| -> f64 { n * f64::from(x) + f64::value_from(i).unwrap() - C };
