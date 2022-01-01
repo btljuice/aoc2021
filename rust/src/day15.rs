@@ -1,5 +1,5 @@
 
-use std::{path::Path, convert::identity, cmp::Ordering, ops::Add};
+use std::{path, cmp::Ordering, ops::Add};
 use itertools::Itertools;
 use ndarray::Array2;
 use shrinkwraprs::Shrinkwrap;
@@ -10,7 +10,7 @@ type Pos = (usize, usize);
 #[derive(Shrinkwrap, PartialEq, Eq, Debug)]
 struct RiskLevels(Array2<u32>);
 impl RiskLevels {
-  fn from_file(filename: impl AsRef<Path>) -> Self {
+  fn from_file(filename: impl AsRef<path::Path>) -> Self {
     let mut lines = common::parse::read_lines(filename);
     let nb_rows: usize = lines.next().unwrap().parse().unwrap();
     let nb_cols: usize = lines.next().unwrap().parse().unwrap();
@@ -27,26 +27,30 @@ impl RiskLevels {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct MinPath { cost: u32,  dirs: Vec<Pos> }
-impl MinPath {
-  fn some(cost: u32, dirs: Vec<Pos>) -> Option<Self> { Some( MinPath { cost, dirs } ) }
+struct Path { cost: u32,  dirs: Vec<Pos> }
+impl Path {
+  fn some(cost: u32, dirs: Vec<Pos>) -> Option<Self> { Some( Path { cost, dirs } ) }
+
+  fn concat(&self, rhs: &Self) -> Self {
+    Path { cost: self.cost + rhs.cost, dirs: self.dirs + rhs.dirs }
+  }
 }
 
-impl PartialOrd for MinPath {
+impl PartialOrd for Path {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { self.cost.partial_cmp(&other.cost) }
 }
 
-impl Ord for MinPath {
+impl Ord for Path {
     fn cmp(&self, other: &Self) -> Ordering { self.cost.cmp(&other.cost) }
 }
 
-impl Add<(u32, Pos)> for MinPath {
-  type Output = MinPath;
+impl Add<(u32, Pos)> for Path {
+  type Output = Path;
 
   fn add(self, (cost, dir): (u32, Pos)) -> Self::Output {
-    let mut dirs = self.dirs.clone();
+    let mut dirs = self.dirs;
     dirs.push(dir);
-    MinPath { cost: self.cost + cost, dirs }
+    Path { cost: self.cost + cost, dirs }
   }
 }
 
@@ -57,24 +61,24 @@ impl Add<(u32, Pos)> for MinPath {
   // f(1,0) = r
   // f(1,1) = r + min{ f(0,1) ; f(1,0) }
   // **TODO**: Use cache macro instead of manual `cache` computation
-struct MinPaths<'a> { cache: Array2<Option<MinPath>>, risks: &'a RiskLevels }
+struct MinPaths<'a> { cache: Array2<Option<Path>>, risks: &'a RiskLevels }
 impl<'a> MinPaths<'a> {
   fn new(risks: &'a RiskLevels) -> Self {
-    let mut cache: Array2<Option<MinPath>> = Array2::<Option<MinPath>>::from_elem(risks.dim(), None);
+    let mut cache: Array2<Option<Path>> = Array2::<Option<Path>>::from_elem(risks.dim(), None);
     let r_01 = risks[[0,1]];
     let r_10 = risks[[1,0]];
     let r_11 = risks[[1,1]];
-    cache[[0,0]] = MinPath::some(   0, vec![(0,0)      ]);
-    cache[[0,1]] = MinPath::some(r_01, vec![(0,0), (0,1)]);
-    cache[[1,0]] = MinPath::some(r_10, vec![(0,0), (1,0)]);
+    cache[[0,0]] = Path::some(   0, vec![(0,0)      ]);
+    cache[[0,1]] = Path::some(r_01, vec![(0,0), (0,1)]);
+    cache[[1,0]] = Path::some(r_10, vec![(0,0), (1,0)]);
 
-    cache[[1,1]] = if r_01 < r_10 { MinPath::some(r_11, vec![(0,0), (0,1), (1,1)]) }
-                   else           { MinPath::some(r_11, vec![(0,0), (1,0), (1,1)]) };
+    cache[[1,1]] = if r_01 < r_10 { Path::some(r_11, vec![(0,0), (0,1), (1,1)]) }
+                   else           { Path::some(r_11, vec![(0,0), (1,0), (1,1)]) };
 
     MinPaths { cache, risks }
   }
 
-  fn cache_get(&'a self, ij: Pos) -> Option<&'a MinPath> { self.cache.get(ij).unwrap_or(&None).as_ref() }
+  fn cache_get(&'a self, ij: Pos) -> Option<&'a Path> { self.cache.get(ij).unwrap_or(&None).as_ref() }
 
   fn nrows(&self) -> usize { self.risks.nrows() }
   fn ncols(&self) -> usize { self.risks.ncols() }
@@ -85,44 +89,46 @@ impl<'a> MinPaths<'a> {
   fn left( &self, (i,j): Pos) -> Option<Pos> { when!( i > 0           , (i-1,j  ) ) }
   fn right(&self, (i,j): Pos) -> Option<Pos> { when!( i < self.ncols(), (i+1,j  ) ) }
 
-  fn cache_up(   &'a self, ij: Pos) -> Option<&'a MinPath> { self.up(   ij).and_then(|p| self.cache_get(p)) }
-  fn cache_right(&'a self, ij: Pos) -> Option<&'a MinPath> { self.right(ij).and_then(|p| self.cache_get(p)) }
-  fn cache_down( &'a self, ij: Pos) -> Option<&'a MinPath> { self.down( ij).and_then(|p| self.cache_get(p)) }
-  fn cache_left( &'a self, ij: Pos) -> Option<&'a MinPath> { self.left( ij).and_then(|p| self.cache_get(p)) }
-
-  fn cache_min_neighbor(&'a self, ij: Pos) -> Option<&'a MinPath> {
-    [ self.cache_up(ij), 
-      self.cache_down(ij), 
-      self.cache_right(ij), 
-      self.cache_left(ij) 
-    ].into_iter().flatten().min()
+  fn adjacents(&self, ij: Pos) -> impl Iterator<Item=Pos> {
+    [ self.up(ij), self.left(ij), self.down(ij), self.right(ij) ].into_iter().flatten()
   }
 
-  fn min_path(&'a mut self, ij: Pos) -> &'a MinPath {
-    // Return cached value if it exists
-    if let Some(min_path) = self.cache_get(ij) { return min_path; }
-
-    // Look for minimal paths through cached neighbors
-    let min_cache_neighbor = self.cache_min_neighbor(ij).expect("min_path should be called only next to at least one neighbor that is already computed");
-
-    let up    =    self.up(ij).and_then(|p| self.min_path_impl(p, vec![ij], min_cache_neighbor.cost)); 
-    let down  =  self.down(ij).and_then(|p| self.min_path_impl(p, vec![ij], min_cache_neighbor.cost)); 
-    let right = self.right(ij).and_then(|p| self.min_path_impl(p, vec![ij], min_cache_neighbor.cost)); 
-    let left  =  self.left(ij).and_then(|p| self.min_path_impl(p, vec![ij], min_cache_neighbor.cost)); 
-
-    let min = [ up, down, right, left ].into_iter().flatten().min().unwrap();
-
-    let cache_ref: &'a mut Option<MinPath> = self.cache.get_mut(ij).unwrap();
-    *cache_ref = Some(min + (self.risks[ij], ij));
-
-    self.cache_get(ij).unwrap()
+  fn cache_min_neighbor(&'a self, ij: Pos) -> Option<&'a Path> {
+    self.adjacents(ij).map(|p| self.cache_get(p)).into_iter().flatten().min()
   }
 
+  fn min_path(&'a mut self, ij: Pos) -> &'a Path {
+    if let Some(path) = self.cache_get(ij) { return path; }
 
-  fn min_path_impl(&'a self, ij: Pos, visited: Vec<Pos>, max_length: u32) -> Option<MinPath> {
-    todo!()
+    let &Path { cost: cached_cost, .. } = self.cache_min_neighbor(ij).expect("Should only compute min_paths with at least 1 neighbor already cached");
+
+    // TODO: refactor here with the code below
+    let min_adjacent = self
+      .adjacents(ij)
+      .filter_map(|p| self.min_path_impl(p, cached_cost))
+      .min()
+      .map(|mp| mp + (self.risks[ij], ij))
+      .unwrap();
+
+    self.cache[ij] = Some(min_adjacent);
+
+    &self.cache[ij].unwrap()
   }
 
+  fn min_path_impl(&self, ij: Pos, max_length: u32) -> Option<Path> {
+    let risk = self.risks[ij];
+
+    if max_length < risk { None } // The risk of the current pos is higher than the max allowed length
+    else if let min_path@Some(_) = self.cache_get(ij) { min_path.filter(|mp| mp.cost <= max_length).cloned() } // Return cache result
+    else {
+      self
+        .adjacents(ij)
+        .filter_map(|p| self.min_path_impl(p, max_length - risk))
+        .min()
+        .map(|mp| mp + (risk, ij))
+
+    }
+  }
 }
 
 #[cfg(test)]
